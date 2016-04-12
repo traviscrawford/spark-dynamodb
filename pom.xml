@@ -34,13 +34,12 @@
           </execution>
         </executions>
         <configuration>
+          <encoding>UTF-8</encoding>
           <args>
             <arg>-unchecked</arg>
             <arg>-deprecation</arg>
             <arg>-explaintypes</arg>
             <arg>-feature</arg>
-            <arg>-encoding</arg>
-            <arg>UTF-8</arg>
             <arg>-Xfatal-warnings</arg>
             <arg>-Xlint</arg>
             <arg>-Ywarn-dead-code</arg>
@@ -117,14 +116,10 @@
       <version>18.0</version>
     </dependency>
     <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-      <version>2.10.4</version>
-    </dependency>
-    <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.10</artifactId>
       <version>1.6.1</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.scalatest</groupId>

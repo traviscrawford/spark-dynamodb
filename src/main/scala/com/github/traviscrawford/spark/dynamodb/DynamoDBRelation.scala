@@ -49,7 +49,14 @@ private[dynamodb] class DynamoDBRelation(
   val dynamodbTable = dynamodb.getTable(table)
   val tableDesc = dynamodbTable.describe()
 
-  private val InferredTableSchema = DynamoDBRelation.getSchema(tableDesc)
+  private val InferredTableSchema = {
+    val scanSpec = new ScanSpec().withMaxPageSize(pageSize)
+    val result = dynamodbTable.scan(scanSpec)
+    val json = result.firstPage().iterator().map(_.toJSON)
+    val jsonRDD = sqlContext.sparkContext.parallelize(json.toSeq)
+    val jsonDF = sqlContext.read.json(jsonRDD)
+    jsonDF.schema
+  }
 
   val converter = new ItemConverter(schema)
 
@@ -61,12 +68,9 @@ private[dynamodb] class DynamoDBRelation(
   /** Get the relation schema.
     *
     * The user-defined schema will be used, if provided. Otherwise the schema is inferred
-    * from the DynamoDB table. Note only primary key attributes can be inferred.
+    * from one page of items scanned from the DynamoDB table.
     */
-  override def schema: StructType = maybeSchema match {
-    case Some(s) => s
-    case None => InferredTableSchema
-  }
+  override def schema: StructType = maybeSchema.getOrElse(InferredTableSchema)
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     // Configure the scan. This does not retrieve items from the table.
@@ -161,18 +165,6 @@ private[dynamodb] class DynamoDBRelation(
 }
 
 private object DynamoDBRelation {
-  /** Infer the schema from a DynamoDB table. */
-  private def getSchema(tableDescription: TableDescription): StructType = {
-    val fields = tableDescription.getAttributeDefinitions.map(attr => {
-      attr.getAttributeType match {
-        case "N" => StructField(attr.getAttributeName, DoubleType)
-        case "S" => StructField(attr.getAttributeName, StringType)
-      }
-    })
-
-    new StructType(fields.toArray)
-  }
-
   // TODO(travis): Simplify conditions structure and implement the rest.
 
   private def getEqualToCondition(

@@ -42,15 +42,23 @@ class DynamoDBRelationSpec() extends FlatSpec with Matchers {
     super.withFixture(test)
   }
 
-  "DynamoDBRelation" should "get attributes in the inferred schema" in {
+  "A DynamoDBRelation" should "infer the correct schema" in {
     val usersDF = sqlContext.read
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .dynamodb(TestUsersTableName)
 
-    usersDF.collect() should contain theSameElementsAs Seq(Row(1), Row(2), Row(3))
+    usersDF.schema shouldEqual TestUsersTableSchema
   }
 
-  "DynamoDBRelation" should "get attributes in the user-provided schema" in {
+  it should "get attributes in the inferred schema" in {
+    val usersDF = sqlContext.read
+      .option(EndpointKey, LocalDynamoDBEndpoint)
+      .dynamodb(TestUsersTableName)
+
+    usersDF.collect() should contain theSameElementsAs Seq(Row(1, "a"), Row(2, "b"), Row(3, "c"))
+  }
+
+  it should "get attributes in the user-provided schema" in {
     val usersDF = sqlContext.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
@@ -59,7 +67,7 @@ class DynamoDBRelationSpec() extends FlatSpec with Matchers {
     usersDF.collect() should contain theSameElementsAs Seq(Row(1, "a"), Row(2, "b"), Row(3, "c"))
   }
 
-  "DynamoDBRelation" should "support EqualTo filters" in {
+  it should "support EqualTo filters" in {
     val df = sqlContext.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
@@ -71,7 +79,7 @@ class DynamoDBRelationSpec() extends FlatSpec with Matchers {
       contain theSameElementsAs Seq(Row(1, "a"))
   }
 
-  "DynamoDBRelation" should "support GreaterThan filters" in {
+  it should "support GreaterThan filters" in {
     val df = sqlContext.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
@@ -83,7 +91,7 @@ class DynamoDBRelationSpec() extends FlatSpec with Matchers {
       contain theSameElementsAs Seq(Row(3, "c"))
   }
 
-  "DynamoDBRelation" should "support LessThan filters" in {
+  it should "support LessThan filters" in {
     val df = sqlContext.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)

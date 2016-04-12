@@ -21,7 +21,7 @@ at [Medium](https://medium.com/).
 You can register a DynamoDB table and run SQL queries against it.
 
 ```
-val users = sqlContext.read.schema(schema).dynamodb("users)
+val users = sqlContext.read.schema(schema).dynamodb("users")
 
 users.registerTempTable("users")
 
@@ -38,8 +38,9 @@ val data = users.select("username").filter($"username" = "tc")
 
 ## Schemas
 
-DynamoDB tables do not have a schema beyond the primary key(s). For this reason table schemas
-must be provided for your scan.
+DynamoDB tables do not have a schema beyond the primary key(s). If no schema is provided,
+the schema will be inferred from a sample of items in the table. If items with multiple
+schemas are stored in the table you may choose to provide the schema.
 
 At a high-level, Spark SQL schemas are a `StructType` that contains a sequence of typed
 `StructField`s. At Medium we generate `StructType`s from protobuf schemas that define the data
