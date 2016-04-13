@@ -18,22 +18,29 @@ at [Medium](https://medium.com/).
 
 ## Quick Start
 
-You can register a DynamoDB table and run SQL queries against it.
+Install and start a spark shell:
 
 ```
-val users = sqlContext.read.schema(schema).dynamodb("users")
+$ mvn install
+$ spark-shell --packages com.github.traviscrawford:spark-dynamodb:0.0.1-SNAPSHOT
+```
 
+You can register a DynamoDB table and run SQL queries against it, or query with the Spark SQL DSL.
+The schema will be inferred by sampling items in the table, or you can provide your own schema.
+
+```
+// Read a table in the default region.
+val users = sqlContext.read.dynamodb("users")
+
+// Or read a table from another region.
+val users2 = sqlContext.read.dynamodb("us-west-2", "users")
+
+// Query with SQL.
 users.registerTempTable("users")
-
 val data = sqlContext.sql("select username from users where username = 'tc'")
-```
 
-You can create a DataFrame from a DynamoDB table and query with the Spark DSL.
-
-```
-val users = sqlContext.read.schema(schema).dynamodb("users")
-
-val data = users.select("username").filter($"username" = "tc")
+// Or query with the DSL.
+val data2 = users.select("username").filter($"username" = "tc")
 ```
 
 ## Schemas
@@ -60,7 +67,6 @@ For details about Spark SQL schemas, see
 
 | Option | Description |
 | --- | --- |
-| `region` | AWS region of the DynamoDB table to scan. |
 | `read_capacity_pct` | Percent of provisioned read capacity to use. Default: `20` |
 | `page_size` | Scan page size. Default: `1000` |
 | `aws_credentials_provider_chain` | Class name of the AWS provider chain to use when connecting to DynamoDB. |

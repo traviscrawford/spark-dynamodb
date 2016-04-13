@@ -49,14 +49,14 @@ private[dynamodb] class DynamoDBRelation(
   val dynamodbTable = dynamodb.getTable(table)
   val tableDesc = dynamodbTable.describe()
 
-  private val InferredTableSchema = {
+  private val TableSchema = maybeSchema.getOrElse({
     val scanSpec = new ScanSpec().withMaxPageSize(pageSize)
     val result = dynamodbTable.scan(scanSpec)
     val json = result.firstPage().iterator().map(_.toJSON)
     val jsonRDD = sqlContext.sparkContext.parallelize(json.toSeq)
     val jsonDF = sqlContext.read.json(jsonRDD)
     jsonDF.schema
-  }
+  })
 
   val converter = new ItemConverter(schema)
 
@@ -70,7 +70,7 @@ private[dynamodb] class DynamoDBRelation(
     * The user-defined schema will be used, if provided. Otherwise the schema is inferred
     * from one page of items scanned from the DynamoDB table.
     */
-  override def schema: StructType = maybeSchema.getOrElse(InferredTableSchema)
+  override def schema: StructType = TableSchema
 
   override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
     // Configure the scan. This does not retrieve items from the table.
