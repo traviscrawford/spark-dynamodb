@@ -61,7 +61,7 @@ val schema = StructType(Seq(
 ```
 
 For details about Spark SQL schemas, see
-[[StructType]](http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.types.StructType).
+[StructType](http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.types.StructType).
 
 ## Configuration
 
