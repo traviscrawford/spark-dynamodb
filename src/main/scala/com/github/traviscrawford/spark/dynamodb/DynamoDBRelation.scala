@@ -27,12 +27,12 @@ private[dynamodb] class DynamoDBRelation(
   maybeRegion: Option[String],
   maybeEndpoint: Option[String],
   maybeSchema: Option[StructType],
-  credentials: Option[AWSCredentialsProviderChain] = None)
+  maybeCredentials: Option[AWSCredentialsProviderChain] = None)
   (@transient val sqlContext: SQLContext)
   extends BaseRelation with PrunedScan with Logging {
 
-  val amazonDynamoDBClient = credentials match {
-    case Some(userProvidedCredentials) => new AmazonDynamoDBClient(userProvidedCredentials)
+  val amazonDynamoDBClient = maybeCredentials match {
+    case Some(credentials) => new AmazonDynamoDBClient(credentials)
     case None => new AmazonDynamoDBClient()
   }
 

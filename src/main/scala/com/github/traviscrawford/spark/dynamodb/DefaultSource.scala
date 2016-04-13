@@ -47,7 +47,7 @@ private[dynamodb] class DefaultSource
       maybeRegion = parameters.get("region"),
       maybeEndpoint = parameters.get("endpoint"),
       maybeSchema = schema,
-      credentials = credentials)(sqlContext)
+      maybeCredentials = credentials)(sqlContext)
   }
 
   private def getCredentials(maybeClassName: Option[String])
