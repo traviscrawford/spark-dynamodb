@@ -28,7 +28,7 @@ private[dynamodb] class DefaultSource
       schema: Option[StructType] = None)
     : DynamoDBRelation = {
 
-    val table = parameters.getOrElse("table",
+    val tableName = parameters.getOrElse("table",
       throw new IllegalArgumentException("Required parameter 'table' was unspecified.")
     )
 
@@ -41,8 +41,7 @@ private[dynamodb] class DefaultSource
     val credentials = getCredentials(parameters.get("aws_credentials_provider_chain"))
 
     new DynamoDBRelation(
-      table = table,
-      readCapacityPct = readCapacityPct,
+      tableName = tableName,
       pageSize = pageSize,
       maybeRegion = parameters.get("region"),
       maybeEndpoint = parameters.get("endpoint"),
