@@ -9,8 +9,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
-import com.amazonaws.services.dynamodbv2.model.TableDescription
-import com.amazonaws.services.dynamodbv2.xspec.Condition
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.Logging
@@ -19,11 +17,8 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
-import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder._
 
-import scala.collection.JavaConversions.collectionAsScalaIterable
 import scala.collection.JavaConversions.asScalaIterator
-import scala.util.control.NonFatal
 
 private[dynamodb] class DynamoDBRelation(
   table: String,
@@ -34,7 +29,7 @@ private[dynamodb] class DynamoDBRelation(
   maybeSchema: Option[StructType],
   credentials: Option[AWSCredentialsProviderChain] = None)
   (@transient val sqlContext: SQLContext)
-  extends BaseRelation with PrunedFilteredScan with Logging {
+  extends BaseRelation with PrunedScan with Logging {
 
   val amazonDynamoDBClient = credentials match {
     case Some(userProvidedCredentials) => new AmazonDynamoDBClient(userProvidedCredentials)
@@ -58,8 +53,6 @@ private[dynamodb] class DynamoDBRelation(
     jsonDF.schema
   })
 
-  val converter = new ItemConverter(schema)
-
   logInfo(s"Table ${tableDesc.getTableName} contains ${tableDesc.getItemCount} items " +
     s"using ${tableDesc.getTableSizeBytes} bytes.")
 
@@ -72,29 +65,10 @@ private[dynamodb] class DynamoDBRelation(
     */
   override def schema: StructType = TableSchema
 
-  override def buildScan(requiredColumns: Array[String], filters: Array[Filter]): RDD[Row] = {
+  override def buildScan(requiredColumns: Array[String]): RDD[Row] = {
     // Configure the scan. This does not retrieve items from the table.
 
-    val conditions: Seq[Condition] = filters.map {
-      case EqualTo(attribute, value) =>
-        DynamoDBRelation.getEqualToCondition(schema, attribute, value)
-
-      case GreaterThan(attribute, value) =>
-        DynamoDBRelation.getGreaterThanCondition(schema, attribute, value)
-
-      case LessThan(attribute, value) =>
-        DynamoDBRelation.getLessThanCondition(schema, attribute, value)
-
-      case _ => throw new RuntimeException(s"Unsupported filters: $filters")
-    }
-
     val expressionSpecBuilder = new ExpressionSpecBuilder().addProjections(requiredColumns: _*)
-
-    if (conditions.nonEmpty) {
-      // And conditions together per the `PrunedFilteredScan` contract.
-      val condition = conditions.tail.fold(conditions.head)((a, b) => a.and(b))
-      expressionSpecBuilder.withCondition(condition)
-    }
 
     val scanSpec = new ScanSpec()
       .withMaxPageSize(pageSize)
@@ -111,7 +85,6 @@ private[dynamodb] class DynamoDBRelation(
     val rateLimiter = RateLimiter.create(permitsPerSecond)
     val itemCounter = new AtomicLong()
     val scannedCounter = new AtomicLong()
-    val failureCounter = new AtomicLong()
 
     logInfo(s"Scanning ${dynamodbTable.getTableName} with rate limit of $permitsPerSecond " +
       s"read capacity units per second ($readCapacityPct% of $readCapacityUnits " +
@@ -122,7 +95,6 @@ private[dynamodb] class DynamoDBRelation(
     var allRows: RDD[Row] = sqlContext.sparkContext.parallelize(Seq[Row]())
     // scalastyle:on
 
-
     val result = dynamodbTable.scan(scanSpec)
 
     // Each `pages.next` call results in a DynamoDB network call.
@@ -131,20 +103,13 @@ private[dynamodb] class DynamoDBRelation(
       scannedCounter.addAndGet(page.getLowLevelResult.getScanResult.getScannedCount.toLong)
 
       // This result set resides in local memory.
-      val rows: Seq[Row] = page.iterator().flatMap(item => {
-        try {
-          Some(converter.toRow(item))
-        } catch {
-          case NonFatal(err) =>
-            // Log a few items that fail conversion, but do not flood the logs.
-            if (failureCounter.incrementAndGet() < 10) {
-              logError(s"Failed converting DynamoDB item: ${item.toJSON}", err)
-            }
-            None
-        }
-      }).toSeq
+      val rows: RDD[Row] = {
+        val json = page.iterator().map(_.toJSON)
+        val jsonRDD = sqlContext.sparkContext.parallelize(json.toSeq)
+        sqlContext.read.schema(schema).json(jsonRDD).rdd
+      }
 
-      allRows = allRows.union(sqlContext.sparkContext.parallelize(rows))
+      allRows = allRows.union(rows)
 
       Option(page.getLowLevelResult.getScanResult.getConsumedCapacity) match {
         case Some(consumedCapacity) =>
@@ -161,57 +126,5 @@ private[dynamodb] class DynamoDBRelation(
     })
 
     allRows
-  }
-}
-
-private object DynamoDBRelation {
-  // TODO(travis): Simplify conditions structure and implement the rest.
-
-  private def getEqualToCondition(
-      schema: StructType,
-      attribute: String,
-      value: Any)
-    : Condition = {
-
-    val structField = schema.fields(schema.fieldIndex(attribute))
-    structField.dataType match {
-      case IntegerType => N(attribute).eq(value.asInstanceOf[Int])
-      case DoubleType => N(attribute).eq(value.asInstanceOf[Double])
-      case LongType => N(attribute).eq(value.asInstanceOf[Long])
-      case StringType => S(attribute).eq(value.asInstanceOf[String])
-      case _ => throw new RuntimeException(s"Unsupported data type: $structField")
-    }
-  }
-
-  private def getGreaterThanCondition(
-      schema: StructType,
-      attribute: String,
-      value: Any)
-    : Condition = {
-
-    val structField = schema.fields(schema.fieldIndex(attribute))
-    structField.dataType match {
-      case IntegerType => N(attribute).gt(value.asInstanceOf[Int])
-      case DoubleType => N(attribute).gt(value.asInstanceOf[Double])
-      case LongType => N(attribute).gt(value.asInstanceOf[Long])
-      case StringType => S(attribute).gt(value.asInstanceOf[String])
-      case _ => throw new RuntimeException(s"Unsupported data type: $structField")
-    }
-  }
-
-  private def getLessThanCondition(
-      schema: StructType,
-      attribute: String,
-      value: Any)
-    : Condition = {
-
-    val structField = schema.fields(schema.fieldIndex(attribute))
-    structField.dataType match {
-      case IntegerType => N(attribute).lt(value.asInstanceOf[Int])
-      case DoubleType => N(attribute).lt(value.asInstanceOf[Double])
-      case LongType => N(attribute).lt(value.asInstanceOf[Long])
-      case StringType => S(attribute).lt(value.asInstanceOf[String])
-      case _ => throw new RuntimeException(s"Unsupported data type: $structField")
-    }
   }
 }
