@@ -1,5 +1,7 @@
 package com.github.traviscrawford.spark.dynamodb
 
+import java.util.concurrent.atomic.AtomicLong
+
 import com.amazonaws.auth.AWSCredentialsProviderChain
 import com.amazonaws.regions.Region
 import com.amazonaws.regions.Regions
@@ -115,6 +117,8 @@ private object DynamoDBRelation extends Logging {
     val table = dynamodb.getTable(config.tableName)
     val result = table.scan(scanSpec)
 
+    val failureCounter = new AtomicLong()
+
     // Each `pages.next` call results in a DynamoDB network call.
     result.pages().iterator().flatMap(page => {
       // This result set resides in local memory.
@@ -123,8 +127,10 @@ private object DynamoDBRelation extends Logging {
           Some(ItemConverter.toRow(item, config.schema))
         } catch {
           case NonFatal(err) =>
-            // TODO(travis): Do not spam the logs.
-            logError(s"Failed converting item to row: ${item.toJSON}", err)
+            // Log some example conversion failures but do not spam the logs.
+            if (failureCounter.incrementAndGet() < 3) {
+              logError(s"Failed converting item to row: ${item.toJSON}", err)
+            }
             None
         }
       })
