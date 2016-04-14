@@ -56,7 +56,7 @@ private[dynamodb] case class DynamoDBRelation(
     // TODO(travis): Add items scanned logging back in.
 
     val segments = 0 until 3 // TODO(travis): Configuration option for number of scan segments.
-    val scanSpecConfigs = segments.map(idx => {
+    val scanConfigs = segments.map(idx => {
       ScanConfig(schema, requiredColumns, tableName, segment = idx,
         totalSegments = segments.length, pageSize, maybeRegion, maybeEndpoint)
     })
@@ -69,7 +69,7 @@ private[dynamodb] case class DynamoDBRelation(
     logInfo(s"Schema for tableName ${tableDesc.getTableName}: $schema")
 
     sqlContext.sparkContext
-      .parallelize(scanSpecConfigs, scanSpecConfigs.length)
+      .parallelize(scanConfigs, scanConfigs.length)
       .flatMap(DynamoDBRelation.scan)
   }
 }
