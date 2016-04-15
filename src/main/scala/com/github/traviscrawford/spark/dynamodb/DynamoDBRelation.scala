@@ -77,7 +77,7 @@ private[dynamodb] case class DynamoDBRelation(
     val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
       ScanConfig(schema, requiredColumns, tableName, segment = idx,
-        totalSegments = segments.length, pageSize, maybeRegion, maybeEndpoint)
+        totalSegments = segments.length, pageSize, maybeCredentials, maybeRegion, maybeEndpoint)
     })
 
     val tableDesc = Table.describe()
@@ -127,15 +127,12 @@ private object DynamoDBRelation extends Logging {
       .withTotalSegments(config.totalSegments)
       .withSegment(config.segment)
 
-    val amazonDynamoDBClient = new AmazonDynamoDBClient()
+    val table = getTable(
+      tableName = config.tableName,
+      maybeCredentials = config.maybeCredentials,
+      maybeRegion = config.maybeRegion,
+      maybeEndpoint = config.maybeEndpoint)
 
-    config.maybeRegion.foreach(r =>
-      amazonDynamoDBClient.setRegion(Region.getRegion(Regions.fromName(r))))
-
-    config.maybeEndpoint.foreach(amazonDynamoDBClient.setEndpoint) // for tests
-
-    val dynamodb = new DynamoDB(amazonDynamoDBClient)
-    val table = dynamodb.getTable(config.tableName)
     val result = table.scan(scanSpec)
 
     val failureCounter = new AtomicLong()
@@ -166,5 +163,6 @@ private case class ScanConfig(
   segment: Int,
   totalSegments: Int,
   pageSize: Int,
+  maybeCredentials: Option[String],
   maybeRegion: Option[String],
   maybeEndpoint: Option[String])
