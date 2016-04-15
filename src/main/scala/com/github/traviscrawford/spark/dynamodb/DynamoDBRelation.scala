@@ -21,18 +21,36 @@ import org.apache.spark.sql.types._
 import scala.collection.JavaConversions.asScalaIterator
 import scala.util.control.NonFatal
 
+/** Scan a DynamoDB table for use as a [[org.apache.spark.sql.DataFrame]].
+  *
+  * @param tableName Name of the DynamoDB table to scan.
+  * @param maybePageSize DynamoDB request page size.
+  * @param maybeSegments Number of segments to scan the table with.
+  * @param maybeRegion AWS region of the table to scan.
+  * @param maybeSchema Schema of the DynamoDB table.
+  * @param maybeCredentials By default, [[com.amazonaws.auth.DefaultAWSCredentialsProviderChain]]
+  *   will be used, which, which will work for most users. If you have a custom credentials
+  *   provider chain it can be provided here.
+  * @param maybeEndpoint Endpoint to connect to DynamoDB on. This is intended for tests.
+  * @see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
+  */
 private[dynamodb] case class DynamoDBRelation(
   tableName: String,
-  pageSize: Int,
+  maybePageSize: Option[String],
+  maybeSegments: Option[String],
   maybeRegion: Option[String],
-  maybeEndpoint: Option[String],
   maybeSchema: Option[StructType],
-  maybeCredentials: Option[AWSCredentialsProviderChain] = None)
+  maybeCredentials: Option[String] = None,
+  maybeEndpoint: Option[String])
   (@transient val sqlContext: SQLContext)
   extends BaseRelation with PrunedScan with Logging {
 
   private val Table = DynamoDBRelation.getTable(
     tableName, maybeCredentials, maybeRegion, maybeEndpoint)
+
+  private val pageSize = Integer.parseInt(maybePageSize.getOrElse("1000"))
+
+  private val Segments = Integer.parseInt(maybeSegments.getOrElse("1"))
 
   // Infer schema with JSONRelation for simplicity. A future improvement would be
   // directly processing the scan result set.
@@ -53,11 +71,10 @@ private[dynamodb] case class DynamoDBRelation(
   override def schema: StructType = TableSchema
 
   override def buildScan(requiredColumns: Array[String]): RDD[Row] = {
-    // TODO(travis): Support user-provided credentials provider chain.
     // TODO(travis): Add rate limiter back in.
     // TODO(travis): Add items scanned logging back in.
 
-    val segments = 0 until 3 // TODO(travis): Configuration option for number of scan segments.
+    val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
       ScanConfig(schema, requiredColumns, tableName, segment = idx,
         totalSegments = segments.length, pageSize, maybeRegion, maybeEndpoint)
@@ -80,13 +97,17 @@ private object DynamoDBRelation extends Logging {
 
   def getTable(
       tableName: String,
-      maybeCredentials: Option[AWSCredentialsProviderChain],
+      maybeCredentials: Option[String],
       maybeRegion: Option[String],
       maybeEndpoint: Option[String])
     : Table = {
 
     val amazonDynamoDBClient = maybeCredentials match {
-      case Some(credentials) => new AmazonDynamoDBClient(credentials)
+      case Some(credentialsClassName) =>
+        logInfo(s"Using AWSCredentialsProviderChain $credentialsClassName")
+        val credentials = Class.forName(credentialsClassName)
+          .newInstance().asInstanceOf[AWSCredentialsProviderChain]
+        new AmazonDynamoDBClient(credentials)
       case None => new AmazonDynamoDBClient()
     }
 
