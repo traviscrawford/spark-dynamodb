@@ -69,5 +69,6 @@ For details about Spark SQL schemas, see
 | --- | --- |
 | `read_capacity_pct` | Percent of provisioned read capacity to use. Default: `20` |
 | `page_size` | Scan page size. Default: `1000` |
+| `segments` | Number of segments to scan the DynamoDB table with. |
 | `aws_credentials_provider_chain` | Class name of the AWS provider chain to use when connecting to DynamoDB. |
 | `endpoint` | DynamoDB client endpoint in `http://localhost:8000` format. This is generally not needed and intended for unit tests. |
