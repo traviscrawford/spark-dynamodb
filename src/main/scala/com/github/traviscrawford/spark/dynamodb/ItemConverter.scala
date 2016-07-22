@@ -30,6 +30,7 @@ private[dynamodb] object ItemConverter {
           field.dataType match {
             case IntegerType => jsonFieldValue.extract[Int]
             case LongType => jsonFieldValue.extract[Long]
+            case DoubleType => jsonFieldValue.extract[Double]
             case StringType => jsonFieldValue.extract[String]
           }
       }
