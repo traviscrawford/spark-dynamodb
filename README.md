@@ -41,6 +41,8 @@ You can register a DynamoDB table and run SQL queries against it, or query with 
 The schema will be inferred by sampling items in the table, or you can provide your own schema.
 
 ```
+import com.github.traviscrawford.spark.dynamodb._
+
 // Read a table in the default region.
 val users = sqlContext.read.dynamodb("users")
 
