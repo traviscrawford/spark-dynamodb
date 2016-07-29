@@ -10,20 +10,32 @@ at [Medium](https://medium.com/).
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Usage](#usage)
 - [Schemas](#schemas)
 - [Configuration](#configuration)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Quick Start
+## Installation
 
-Install and start a spark shell:
+Depend on this library in your application with the following Maven coordinates:
 
 ```
-$ mvn install
-$ spark-shell --packages com.github.traviscrawford:spark-dynamodb:0.0.1-SNAPSHOT
+<dependency>
+  <groupId>com.github.traviscrawford</groupId>
+  <artifactId>spark-dynamodb</artifactId>
+  <version>0.0.2</version>
+</dependency>
 ```
+
+Start a spark shell with this library as a dependency:
+
+```
+$ spark-shell --packages com.github.traviscrawford:spark-dynamodb:0.0.2
+```
+
+## Usage
 
 You can register a DynamoDB table and run SQL queries against it, or query with the Spark SQL DSL.
 The schema will be inferred by sampling items in the table, or you can provide your own schema.
