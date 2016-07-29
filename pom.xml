@@ -8,6 +8,22 @@
 
   <name>spark-dynamodb</name>
   <url>https://github.com/traviscrawford/spark-dynamodb</url>
+  <description>DynamoDB data source for Apache Spark</description>
+
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>travis</id>
+      <name>Travis Crawford</name>
+    </developer>
+  </developers>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -65,6 +81,12 @@
             <goals>
               <goal>compile</goal>
               <goal>testCompile</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>doc-jar</goal>
             </goals>
           </execution>
         </executions>
