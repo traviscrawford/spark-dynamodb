@@ -14,24 +14,25 @@ private[dynamodb] object ItemConverter {
     * Note this is a simple converter for use in tests while determining the overall structure,
     * and does not focus on efficiency or handling all data types at this time.
     */
-  def toRow(item: Item, schema: StructType): Row = {
+  def toRow(item: Item, schema: StructType, requiredColumns: Seq[String]): Row = {
     val json = parse(item.toJSON)
 
-    val values: Seq[Any] = schema.map(field => {
-      val jsonFieldValue = json \ field.name
+    val values: Seq[Any] = requiredColumns.map(field => {
+      val jsonFieldValue = json \ field
 
       jsonFieldValue match {
         case JNothing =>
           // item does not have a value for this field
           // scalastyle:off null
           null
-          // scalastyle:on null
+        // scalastyle:on null
         case _ =>
-          field.dataType match {
+          schema(field).dataType match {
             case IntegerType => jsonFieldValue.extract[Int]
             case LongType => jsonFieldValue.extract[Long]
             case DoubleType => jsonFieldValue.extract[Double]
             case StringType => jsonFieldValue.extract[String]
+            case BooleanType => jsonFieldValue.extract[Boolean]
           }
       }
     })
