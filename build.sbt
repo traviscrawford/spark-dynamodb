@@ -13,4 +13,4 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.6" % "test"
 )
 
-publishTo := Some(s3resolver.value("LevelMoney S3 Maven Repository", s3("level-maven-repo-test/releases/")))
+publishTo := Some(s3resolver.value("LevelMoney S3 Maven Repository", s3("level-maven-repo/releases/")))
