@@ -11,12 +11,12 @@ import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
-import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+import Logger.log
 
 import scala.collection.JavaConversions.asScalaIterator
 import scala.util.control.NonFatal
@@ -43,7 +43,7 @@ private[dynamodb] case class DynamoDBRelation(
   maybeCredentials: Option[String] = None,
   maybeEndpoint: Option[String])
   (@transient val sqlContext: SQLContext)
-  extends BaseRelation with PrunedScan with Logging {
+  extends BaseRelation with PrunedScan {
 
   private val Table = DynamoDBRelation.getTable(
     tableName, maybeCredentials, maybeRegion, maybeEndpoint)
@@ -82,10 +82,10 @@ private[dynamodb] case class DynamoDBRelation(
 
     val tableDesc = Table.describe()
 
-    logInfo(s"Table ${tableDesc.getTableName} contains ${tableDesc.getItemCount} items " +
+    log.info(s"Table ${tableDesc.getTableName} contains ${tableDesc.getItemCount} items " +
       s"using ${tableDesc.getTableSizeBytes} bytes.")
 
-    logInfo(s"Schema for tableName ${tableDesc.getTableName}: $schema")
+    log.info(s"Schema for tableName ${tableDesc.getTableName}: $schema")
 
     sqlContext.sparkContext
       .parallelize(scanConfigs, scanConfigs.length)
@@ -93,7 +93,7 @@ private[dynamodb] case class DynamoDBRelation(
   }
 }
 
-private object DynamoDBRelation extends Logging {
+private object DynamoDBRelation {
 
   def getTable(
       tableName: String,
@@ -104,7 +104,7 @@ private object DynamoDBRelation extends Logging {
 
     val amazonDynamoDBClient = maybeCredentials match {
       case Some(credentialsClassName) =>
-        logInfo(s"Using AWSCredentialsProviderChain $credentialsClassName")
+        log.info(s"Using AWSCredentialsProviderChain $credentialsClassName")
         val credentials = Class.forName(credentialsClassName)
           .newInstance().asInstanceOf[AWSCredentialsProviderChain]
         new AmazonDynamoDBClient(credentials)
@@ -147,7 +147,7 @@ private object DynamoDBRelation extends Logging {
           case NonFatal(err) =>
             // Log some example conversion failures but do not spam the logs.
             if (failureCounter.incrementAndGet() < 3) {
-              logError(s"Failed converting item to row: ${item.toJSON}", err)
+              log.error(s"Failed converting item to row: ${item.toJSON}", err)
             }
             None
         }
@@ -166,3 +166,7 @@ private case class ScanConfig(
   maybeCredentials: Option[String],
   maybeRegion: Option[String],
   maybeEndpoint: Option[String])
+
+object Logger extends Serializable {
+  @transient lazy val log = org.apache.log4j.LogManager.getLogger(DynamoDBRelation.getClass())
+}
