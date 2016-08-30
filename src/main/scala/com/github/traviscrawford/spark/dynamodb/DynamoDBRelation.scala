@@ -6,8 +6,7 @@ import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Row
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{Row, SQLContext, SparkSession}
 import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.sources.PrunedScan
 import org.apache.spark.sql.types.StructType
@@ -18,17 +17,17 @@ import scala.util.control.NonFatal
 
 /** Scan a DynamoDB table for use as a [[org.apache.spark.sql.DataFrame]].
   *
-  * @param tableName Name of the DynamoDB table to scan.
-  * @param maybePageSize DynamoDB request page size.
-  * @param maybeSegments Number of segments to scan the table with.
-  * @param maybeRateLimit Max number of read capacity units per second each scan segment will consume from
-  *   the DynamoDB table.
-  * @param maybeRegion AWS region of the table to scan.
-  * @param maybeSchema Schema of the DynamoDB table.
+  * @param tableName        Name of the DynamoDB table to scan.
+  * @param maybePageSize    DynamoDB request page size.
+  * @param maybeSegments    Number of segments to scan the table with.
+  * @param maybeRateLimit   Max number of read capacity units per second each scan segment will consume from
+  *                         the DynamoDB table.
+  * @param maybeRegion      AWS region of the table to scan.
+  * @param maybeSchema      Schema of the DynamoDB table.
   * @param maybeCredentials By default, [[com.amazonaws.auth.DefaultAWSCredentialsProviderChain]]
-  *   will be used, which, which will work for most users. If you have a custom credentials
-  *   provider it can be provided here.
-  * @param maybeEndpoint Endpoint to connect to DynamoDB on. This is intended for tests.
+  *                         will be used, which, which will work for most users. If you have a custom credentials
+  *                         provider it can be provided here.
+  * @param maybeEndpoint    Endpoint to connect to DynamoDB on. This is intended for tests.
   * @see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
   */
 private[dynamodb] case class DynamoDBRelation(
@@ -40,7 +39,7 @@ private[dynamodb] case class DynamoDBRelation(
   maybeSchema: Option[StructType],
   maybeCredentials: Option[String] = None,
   maybeEndpoint: Option[String])
-  (@transient val sqlContext: SQLContext)
+  (@transient val spark: SparkSession)
   extends BaseRelation with PrunedScan with BaseScanner {
 
   private val log = LoggerFactory.getLogger(this.getClass)
@@ -58,8 +57,8 @@ private[dynamodb] case class DynamoDBRelation(
     val scanSpec = new ScanSpec().withMaxPageSize(pageSize)
     val result = Table.scan(scanSpec)
     val json = result.firstPage().iterator().map(_.toJSON)
-    val jsonRDD = sqlContext.sparkContext.parallelize(json.toSeq)
-    val jsonDF = sqlContext.read.json(jsonRDD)
+    val jsonRDD = spark.sparkContext.parallelize(json.toSeq)
+    val jsonDF = spark.read.json(jsonRDD)
     jsonDF.schema
   })
 
@@ -95,7 +94,7 @@ private[dynamodb] case class DynamoDBRelation(
 
     log.info(s"Schema for tableName ${tableDesc.getTableName}: $schema")
 
-    sqlContext.sparkContext
+    spark.sparkContext
       .parallelize(scanConfigs, scanConfigs.length)
       .flatMap(scan)
   }
