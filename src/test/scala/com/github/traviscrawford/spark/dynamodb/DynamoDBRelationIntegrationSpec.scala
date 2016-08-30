@@ -3,27 +3,15 @@ package com.github.traviscrawford.spark.dynamodb
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 
-/** Test Spark's DynamoDB integration.
-  *
-  * At this time you must manually start the local DynamoDB server before
-  * running tests. This should be automatic in the future.
-  *
-  * {{{
-  *   java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -inMemory
-  * }}}
-  *
-  * @see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Tools.DynamoDBLocal.html
-  */
-class DynamoDBRelationSpec() extends BaseSpec {
+class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
 
   private val EndpointKey = "endpoint"
   private val TestUsersTableSchema = StructType(Seq(
     StructField(UserIdKey, LongType),
     StructField(UsernameKey, StringType)))
 
-
   "A DynamoDBRelation" should "infer the correct schema" in {
-    val usersDF = sqlContext.read
+    val usersDF = spark.read
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .dynamodb(TestUsersTableName)
 
@@ -31,7 +19,7 @@ class DynamoDBRelationSpec() extends BaseSpec {
   }
 
   it should "get attributes in the inferred schema" in {
-    val usersDF = sqlContext.read
+    val usersDF = spark.read
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .option("rate_limit_per_segment", "1")
       .dynamodb(TestUsersTableName)
@@ -40,7 +28,7 @@ class DynamoDBRelationSpec() extends BaseSpec {
   }
 
   it should "get attributes in the user-provided schema" in {
-    val usersDF = sqlContext.read
+    val usersDF = spark.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .dynamodb(TestUsersTableName)
@@ -49,38 +37,38 @@ class DynamoDBRelationSpec() extends BaseSpec {
   }
 
   it should "support EqualTo filters" in {
-    val df = sqlContext.read
+    val df = spark.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .dynamodb(TestUsersTableName)
 
-    df.registerTempTable("users")
+    df.createOrReplaceTempView("users")
 
-    sqlContext.sql("select * from users where username = 'a'").collect() should
+    spark.sql("select * from users where username = 'a'").collect() should
       contain theSameElementsAs Seq(Row(1, "a"))
   }
 
   it should "support GreaterThan filters" in {
-    val df = sqlContext.read
+    val df = spark.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .dynamodb(TestUsersTableName)
 
-    df.registerTempTable("users")
+    df.createOrReplaceTempView("users")
 
-    sqlContext.sql("select * from users where username > 'b'").collect() should
+    spark.sql("select * from users where username > 'b'").collect() should
       contain theSameElementsAs Seq(Row(3, "c"))
   }
 
   it should "support LessThan filters" in {
-    val df = sqlContext.read
+    val df = spark.read
       .schema(TestUsersTableSchema)
       .option(EndpointKey, LocalDynamoDBEndpoint)
       .dynamodb(TestUsersTableName)
 
-    df.registerTempTable("users")
+    df.createOrReplaceTempView("users")
 
-    sqlContext.sql("select * from users where username < 'b'").collect() should
+    spark.sql("select * from users where username < 'b'").collect() should
       contain theSameElementsAs Seq(Row(1, "a"))
   }
 }
