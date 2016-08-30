@@ -163,6 +163,9 @@
             <AWS_ACCESS_KEY_ID>test_aws_access_key_id</AWS_ACCESS_KEY_ID>
             <AWS_SECRET_ACCESS_KEY>test_aws_secret_access_key</AWS_SECRET_ACCESS_KEY>
           </environmentVariables>
+          <systemProperties>
+            <dynamodb.port>${dynamodblocal.port}</dynamodb.port>
+          </systemProperties>
         </configuration>
         <executions>
           <execution>
@@ -170,6 +173,82 @@
             <goals>
               <goal>test</goal>
             </goals>
+            <configuration>
+              <suffixes>(?&lt;!Integration)(Test|Spec)</suffixes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>integration-test</id>
+            <phase>integration-test</phase>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <suffixes>(?&lt;=Integration)(Test|Spec)</suffixes>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.8</version>
+        <executions>
+          <execution>
+            <id>unpack-dynamodb-local</id>
+            <goals>
+              <goal>unpack</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>com.jcabi</groupId>
+                  <artifactId>DynamoDBLocal</artifactId>
+                  <version>2015-07-16</version>
+                  <type>zip</type>
+                  <outputDirectory>${project.build.directory}/dynamodb-dist</outputDirectory>
+                  <overWrite>false</overWrite>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.8</version>
+        <executions>
+          <execution>
+            <id>reserver-dynamodb-port</id>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+            <configuration>
+              <portNames>
+                <portName>dynamodblocal.port</portName>
+              </portNames>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>com.jcabi</groupId>
+        <artifactId>jcabi-dynamodb-maven-plugin</artifactId>
+        <version>0.8</version>
+        <executions>
+          <execution>
+            <id>dynamodb-integration-test</id>
+            <goals>
+              <goal>start</goal>
+              <goal>stop</goal>
+            </goals>
+            <configuration>
+              <port>${dynamodblocal.port}</port>
+              <dist>${project.build.directory}/dynamodb-dist</dist>
+            </configuration>
           </execution>
         </executions>
       </plugin>
@@ -189,13 +268,13 @@
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_2.10</artifactId>
-      <version>1.6.1</version>
+      <artifactId>spark-sql_2.11</artifactId>
+      <version>2.0.0</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_2.10</artifactId>
+      <artifactId>scalatest_2.11</artifactId>
       <version>2.2.6</version>
       <scope>test</scope>
     </dependency>
