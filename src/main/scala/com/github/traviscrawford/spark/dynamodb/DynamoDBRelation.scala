@@ -11,12 +11,13 @@ import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
-import org.apache.spark.Logging
+import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+import org.spark_project.guava.util.concurrent.RateLimiter
 
 import scala.collection.JavaConversions.asScalaIterator
 import scala.util.control.NonFatal
@@ -38,12 +39,15 @@ private[dynamodb] case class DynamoDBRelation(
   tableName: String,
   maybePageSize: Option[String],
   maybeSegments: Option[String],
+  maybeReadCpt: Option[Int],
   maybeRegion: Option[String],
   maybeSchema: Option[StructType],
   maybeCredentials: Option[String] = None,
   maybeEndpoint: Option[String])
   (@transient val sqlContext: SQLContext)
-  extends BaseRelation with PrunedScan with Logging {
+  extends BaseRelation with PrunedScan {
+
+  @transient private lazy val logger = LogManager.getLogger(this.getClass)
 
   private val Table = DynamoDBRelation.getTable(
     tableName, maybeCredentials, maybeRegion, maybeEndpoint)
@@ -77,15 +81,15 @@ private[dynamodb] case class DynamoDBRelation(
     val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
       ScanConfig(schema, requiredColumns, tableName, segment = idx,
-        totalSegments = segments.length, pageSize, maybeCredentials, maybeRegion, maybeEndpoint)
+        totalSegments = segments.length, pageSize, maybeReadCpt, maybeCredentials, maybeRegion, maybeEndpoint)
     })
 
     val tableDesc = Table.describe()
 
-    logInfo(s"Table ${tableDesc.getTableName} contains ${tableDesc.getItemCount} items " +
+    logger.info(s"Table ${tableDesc.getTableName} contains ${tableDesc.getItemCount} items " +
       s"using ${tableDesc.getTableSizeBytes} bytes.")
 
-    logInfo(s"Schema for tableName ${tableDesc.getTableName}: $schema")
+    logger.info(s"Schema for tableName ${tableDesc.getTableName}: $schema")
 
     sqlContext.sparkContext
       .parallelize(scanConfigs, scanConfigs.length)
@@ -93,7 +97,9 @@ private[dynamodb] case class DynamoDBRelation(
   }
 }
 
-private object DynamoDBRelation extends Logging {
+private object DynamoDBRelation {
+
+  @transient private lazy val logger = LogManager.getLogger(this.getClass)
 
   def getTable(
       tableName: String,
@@ -104,7 +110,7 @@ private object DynamoDBRelation extends Logging {
 
     val amazonDynamoDBClient = maybeCredentials match {
       case Some(credentialsClassName) =>
-        logInfo(s"Using AWSCredentialsProviderChain $credentialsClassName")
+        logger.info(s"Using AWSCredentialsProviderChain $credentialsClassName")
         val credentials = Class.forName(credentialsClassName)
           .newInstance().asInstanceOf[AWSCredentialsProviderChain]
         new AmazonDynamoDBClient(credentials)
@@ -117,6 +123,7 @@ private object DynamoDBRelation extends Logging {
   }
 
   def scan(config: ScanConfig): Iterator[Row] = {
+
     val expressionSpecBuilder = new ExpressionSpecBuilder()
       .addProjections(config.requiredColumns: _*)
 
@@ -133,27 +140,38 @@ private object DynamoDBRelation extends Logging {
       maybeRegion = config.maybeRegion,
       maybeEndpoint = config.maybeEndpoint)
 
-    val result = table.scan(scanSpec)
-
     val failureCounter = new AtomicLong()
 
-    // Each `pages.next` call results in a DynamoDB network call.
+    val perSegmentCapacity = config.readCpt.map(_.toDouble).getOrElse(Double.MaxValue) / config.totalSegments
+
+    val rateLimiter = RateLimiter.create(math.max(1, math.min(Int.MaxValue, perSegmentCapacity.toInt)))
+
+    val result = table.scan(scanSpec)
+
     result.pages().iterator().flatMap(page => {
-      // This result set resides in local memory.
+
+      val consumedCapacity = Option(page.getLowLevelResult.getScanResult.getConsumedCapacity).
+        map(_.getCapacityUnits.toInt).getOrElse(1)
+
+      rateLimiter.acquire(if(consumedCapacity <= 0) 1 else consumedCapacity)
+
       page.iterator().flatMap(item => {
         try {
-          Some(ItemConverter.toRow(item, config.schema))
+          Some(ItemConverter.toRow(item, config.schema, config.requiredColumns))
         } catch {
           case NonFatal(err) =>
             // Log some example conversion failures but do not spam the logs.
             if (failureCounter.incrementAndGet() < 3) {
-              logError(s"Failed converting item to row: ${item.toJSON}", err)
+              logger.error(s"Failed converting item to row: ${item.toJSON}", err)
             }
             None
         }
       })
+
     })
+
   }
+
 }
 
 private case class ScanConfig(
@@ -163,6 +181,7 @@ private case class ScanConfig(
   segment: Int,
   totalSegments: Int,
   pageSize: Int,
+  readCpt: Option[Int],
   maybeCredentials: Option[String],
   maybeRegion: Option[String],
   maybeEndpoint: Option[String])

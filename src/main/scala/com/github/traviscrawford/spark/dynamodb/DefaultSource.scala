@@ -1,6 +1,5 @@
 package com.github.traviscrawford.spark.dynamodb
 
-import org.apache.spark.Logging
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.sources.RelationProvider
@@ -8,7 +7,7 @@ import org.apache.spark.sql.sources.SchemaRelationProvider
 import org.apache.spark.sql.types.StructType
 
 private[dynamodb] class DefaultSource
-  extends RelationProvider with SchemaRelationProvider with Logging {
+  extends RelationProvider with SchemaRelationProvider {
 
   override def createRelation(
       sqlContext: SQLContext,
@@ -31,12 +30,10 @@ private[dynamodb] class DefaultSource
       throw new IllegalArgumentException("Required parameter 'table' was unspecified.")
     )
 
-    // Update docs if the read_capacity_pct default is changed.
-    val readCapacityPct = Integer.parseInt(parameters.getOrElse("read_capacity_pct", "20"))
-
     new DynamoDBRelation(
       tableName = tableName,
       maybePageSize = parameters.get("page_size"),
+      maybeReadCpt = parameters.get("read_capacity_pct").map(_.toInt),
       maybeRegion = parameters.get("region"),
       maybeSegments = parameters.get("segments"),
       maybeSchema = maybeSchema,
