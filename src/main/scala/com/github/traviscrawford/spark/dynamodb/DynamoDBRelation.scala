@@ -6,10 +6,9 @@ import com.amazonaws.auth.AWSCredentialsProviderChain
 import com.amazonaws.regions.Region
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-import com.amazonaws.services.dynamodbv2.document.DynamoDB
-import com.amazonaws.services.dynamodbv2.document.Table
+import com.amazonaws.services.dynamodbv2.document.{DynamoDB, Table}
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
-import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
+import com.amazonaws.services.dynamodbv2.model.{ProvisionedThroughputExceededException, ReturnConsumedCapacity}
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import org.apache.log4j.LogManager
 import org.apache.spark.rdd.RDD
@@ -19,6 +18,7 @@ import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.spark_project.guava.util.concurrent.RateLimiter
 
+import scala.annotation.tailrec
 import scala.collection.JavaConversions.asScalaIterator
 import scala.util.control.NonFatal
 
@@ -148,27 +148,56 @@ private object DynamoDBRelation {
 
     val result = table.scan(scanSpec)
 
-    result.pages().iterator().flatMap(page => {
+    RetryIterator(config.tableName, 1000)(result.pages().iterator()).flatMap(
 
-      val consumedCapacity = Option(page.getLowLevelResult.getScanResult.getConsumedCapacity).
-        map(_.getCapacityUnits.toInt).getOrElse(1)
+      page => {
 
-      rateLimiter.acquire(if(consumedCapacity <= 0) 1 else consumedCapacity)
+        val result = RetryIterator(config.tableName, 100)(page.iterator()).flatMap(item => {
+          try {
 
-      page.iterator().flatMap(item => {
-        try {
-          Some(ItemConverter.toRow(item, config.schema, config.requiredColumns))
-        } catch {
-          case NonFatal(err) =>
-            // Log some example conversion failures but do not spam the logs.
-            if (failureCounter.incrementAndGet() < 3) {
-              logger.error(s"Failed converting item to row: ${item.toJSON}", err)
-            }
-            None
-        }
-      })
+            Some(ItemConverter.toRow(item, config.schema, config.requiredColumns))
+          } catch {
+            case NonFatal(err) =>
+              // Log some example conversion failures but do not spam the logs.
+              if (failureCounter.incrementAndGet() < 3) {
+                logger.error(s"Failed converting item to row: ${item.toJSON}", err)
+              }
+              None
+          }
+        })
+
+        val consumedCapacity = Option(page.getLowLevelResult.getScanResult.getConsumedCapacity).
+          map(_.getCapacityUnits.toInt).getOrElse(1)
+
+        rateLimiter.acquire(if (consumedCapacity <= 0) 1 else consumedCapacity)
+
+        result
 
     })
+
+  }
+
+  //"Retry Forever" iterator
+  private implicit def RetryIterator[T](tableName: String, delayMillis: Int)(it: java.util.Iterator[T]) = new Iterator[T] {
+
+    @tailrec
+    def tryAndRetry[R](f: () => R): R= try {
+      f()
+    } catch {
+      case e: ProvisionedThroughputExceededException => {
+        logger.warn(s"Provisioned throughput exceeded while retrieving items from [${tableName}]")
+        Thread.sleep(delayMillis)
+        tryAndRetry(f)
+      }
+    }
+
+    override def hasNext: Boolean = tryAndRetry {
+      it.hasNext
+    }
+
+    override def next(): T = tryAndRetry[T] {
+      it.next
+    }
 
   }
 
