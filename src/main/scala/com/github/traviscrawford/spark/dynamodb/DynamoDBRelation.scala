@@ -17,6 +17,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+import org.spark_project.guava.util.concurrent.RateLimiter
 
 import scala.collection.JavaConversions.asScalaIterator
 import scala.util.control.NonFatal
@@ -38,6 +39,7 @@ private[dynamodb] case class DynamoDBRelation(
   tableName: String,
   maybePageSize: Option[String],
   maybeSegments: Option[String],
+  maybeReadCpt: Option[Int],
   maybeRegion: Option[String],
   maybeSchema: Option[StructType],
   maybeCredentials: Option[String] = None,
@@ -79,7 +81,7 @@ private[dynamodb] case class DynamoDBRelation(
     val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
       ScanConfig(schema, requiredColumns, tableName, segment = idx,
-        totalSegments = segments.length, pageSize, maybeCredentials, maybeRegion, maybeEndpoint)
+        totalSegments = segments.length, pageSize, maybeReadCpt, maybeCredentials, maybeRegion, maybeEndpoint)
     })
 
     val tableDesc = Table.describe()
@@ -121,6 +123,7 @@ private object DynamoDBRelation {
   }
 
   def scan(config: ScanConfig): Iterator[Row] = {
+
     val expressionSpecBuilder = new ExpressionSpecBuilder()
       .addProjections(config.requiredColumns: _*)
 
@@ -137,13 +140,21 @@ private object DynamoDBRelation {
       maybeRegion = config.maybeRegion,
       maybeEndpoint = config.maybeEndpoint)
 
-    val result = table.scan(scanSpec)
-
     val failureCounter = new AtomicLong()
 
-    // Each `pages.next` call results in a DynamoDB network call.
+    val perSegmentCapacity = config.readCpt.map(_.toDouble).getOrElse(Double.MaxValue) / config.totalSegments
+
+    val rateLimiter = RateLimiter.create(math.max(1, math.min(Int.MaxValue, perSegmentCapacity.toInt)))
+
+    val result = table.scan(scanSpec)
+
     result.pages().iterator().flatMap(page => {
-      // This result set resides in local memory.
+
+      val consumedCapacity = Option(page.getLowLevelResult.getScanResult.getConsumedCapacity).
+        map(_.getCapacityUnits.toInt).getOrElse(1)
+
+      rateLimiter.acquire(if(consumedCapacity <= 0) 1 else consumedCapacity)
+
       page.iterator().flatMap(item => {
         try {
           Some(ItemConverter.toRow(item, config.schema, config.requiredColumns))
@@ -156,8 +167,11 @@ private object DynamoDBRelation {
             None
         }
       })
+
     })
+
   }
+
 }
 
 private case class ScanConfig(
@@ -167,6 +181,7 @@ private case class ScanConfig(
   segment: Int,
   totalSegments: Int,
   pageSize: Int,
+  readCpt: Option[Int],
   maybeCredentials: Option[String],
   maybeRegion: Option[String],
   maybeEndpoint: Option[String])

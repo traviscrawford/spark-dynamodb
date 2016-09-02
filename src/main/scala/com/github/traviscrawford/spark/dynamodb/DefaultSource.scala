@@ -30,12 +30,10 @@ private[dynamodb] class DefaultSource
       throw new IllegalArgumentException("Required parameter 'table' was unspecified.")
     )
 
-    // Update docs if the read_capacity_pct default is changed.
-    val readCapacityPct = Integer.parseInt(parameters.getOrElse("read_capacity_pct", "20"))
-
     new DynamoDBRelation(
       tableName = tableName,
       maybePageSize = parameters.get("page_size"),
+      maybeReadCpt = parameters.get("read_capacity_pct").map(_.toInt),
       maybeRegion = parameters.get("region"),
       maybeSegments = parameters.get("segments"),
       maybeSchema = maybeSchema,
