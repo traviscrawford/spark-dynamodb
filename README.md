@@ -81,7 +81,7 @@ For details about Spark SQL schemas, see
 
 | Option | Description |
 | --- | --- |
-| `read_capacity_pct` | Percent of provisioned read capacity to use. Default: `20` |
+| `rate_limit_per_segment` | Max number of read capacity units per second each scan segment will consume from the DynamoDB table. Default: no rate limit |
 | `page_size` | Scan page size. Default: `1000` |
 | `segments` | Number of segments to scan the DynamoDB table with. |
 | `aws_credentials_provider_chain` | Class name of the AWS provider chain to use when connecting to DynamoDB. |
