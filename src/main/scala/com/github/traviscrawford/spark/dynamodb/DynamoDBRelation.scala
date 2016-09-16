@@ -11,9 +11,14 @@ import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
+import com.google.common.util.concurrent.RateLimiter
+import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.sources.BaseRelation
+import org.apache.spark.sql.sources.PrunedScan
+import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
@@ -27,6 +32,8 @@ import scala.util.control.NonFatal
   * @param tableName Name of the DynamoDB table to scan.
   * @param maybePageSize DynamoDB request page size.
   * @param maybeSegments Number of segments to scan the table with.
+  * @param maybeRateLimit Max number of read capacity units per second each scan segment will consume from
+  *   the DynamoDB table.
   * @param maybeRegion AWS region of the table to scan.
   * @param maybeSchema Schema of the DynamoDB table.
   * @param maybeCredentials By default, [[com.amazonaws.auth.DefaultAWSCredentialsProviderChain]]
@@ -39,6 +46,7 @@ private[dynamodb] case class DynamoDBRelation(
   tableName: String,
   maybePageSize: Option[String],
   maybeSegments: Option[String],
+  maybeRateLimit: Option[Int],
   maybeRegion: Option[String],
   maybeSchema: Option[StructType],
   maybeCredentials: Option[String] = None,
@@ -72,13 +80,13 @@ private[dynamodb] case class DynamoDBRelation(
   override def schema: StructType = TableSchema
 
   override def buildScan(requiredColumns: Array[String]): RDD[Row] = {
-    // TODO(travis): Add rate limiter back in.
     // TODO(travis): Add items scanned logging back in.
 
     val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
       ScanConfig(schema, requiredColumns, tableName, segment = idx,
-        totalSegments = segments.length, pageSize, maybeCredentials, maybeRegion, maybeEndpoint)
+        totalSegments = segments.length, pageSize, maybeRateLimit = maybeRateLimit,
+        maybeCredentials, maybeRegion, maybeEndpoint)
     })
 
     val tableDesc = Table.describe()
@@ -138,10 +146,15 @@ private object DynamoDBRelation {
 
     val failureCounter = new AtomicLong()
 
+    val maybeRateLimiter = config.maybeRateLimit.map(rateLimit => {
+      log.info(s"Segment ${config.segment} using rate limit of $rateLimit")
+      RateLimiter.create(rateLimit)
+    })
+
     // Each `pages.next` call results in a DynamoDB network call.
     result.pages().iterator().flatMap(page => {
       // This result set resides in local memory.
-      page.iterator().flatMap(item => {
+      val rows = page.iterator().flatMap(item => {
         try {
           Some(ItemConverter.toRow(item, config.schema))
         } catch {
@@ -153,6 +166,23 @@ private object DynamoDBRelation {
             None
         }
       })
+
+      // Blocks until rate limit is available.
+      maybeRateLimiter.foreach(rateLimiter => {
+        // DynamoDBLocal.jar does not implement consumed capacity
+        val maybeConsumedCapacityUnits = Option(page.getLowLevelResult.getScanResult.getConsumedCapacity)
+          .map(_.getCapacityUnits)
+          .map(math.ceil(_).toInt)
+
+        maybeConsumedCapacityUnits.foreach(consumedCapacityUnits => {
+          val waited = rateLimiter.acquire(consumedCapacityUnits)
+          if (waited >= 1) {
+            log.info(s"Segment ${config.segment} waited $waited seconds before making this request.")
+          }
+        })
+      })
+
+      rows
     })
   }
 }
@@ -164,6 +194,7 @@ private case class ScanConfig(
   segment: Int,
   totalSegments: Int,
   pageSize: Int,
+  maybeRateLimit: Option[Int],
   maybeCredentials: Option[String],
   maybeRegion: Option[String],
   maybeEndpoint: Option[String])
