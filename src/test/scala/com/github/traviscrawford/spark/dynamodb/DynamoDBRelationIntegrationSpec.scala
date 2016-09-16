@@ -53,6 +53,7 @@ class DynamoDBRelationIntegrationSpec() extends FlatSpec with Matchers {
   it should "get attributes in the inferred schema" in {
     val usersDF = spark.read
       .option(EndpointKey, LocalDynamoDBEndpoint)
+      .option("rate_limit_per_segment", "1")
       .dynamodb(TestUsersTableName)
 
     usersDF.collect() should contain theSameElementsAs Seq(Row(1, "a"), Row(2, "b"), Row(3, "c"))
