@@ -1,7 +1,8 @@
 package com.github.traviscrawford.spark.dynamodb
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-import com.amazonaws.services.dynamodbv2.document.{DynamoDB, Item}
+import com.amazonaws.services.dynamodbv2.document.DynamoDB
+import com.amazonaws.services.dynamodbv2.document.Item
 import com.amazonaws.services.dynamodbv2.model._
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._

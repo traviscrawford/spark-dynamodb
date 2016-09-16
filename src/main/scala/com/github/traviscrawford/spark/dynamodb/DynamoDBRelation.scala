@@ -16,6 +16,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+import org.slf4j.LoggerFactory
 import Logger.log
 
 import scala.collection.JavaConversions.asScalaIterator
@@ -168,5 +169,5 @@ private case class ScanConfig(
   maybeEndpoint: Option[String])
 
 object Logger extends Serializable {
-  @transient lazy val log = org.apache.log4j.LogManager.getLogger(DynamoDBRelation.getClass())
+  @transient lazy val log = LoggerFactory.getLogger(DynamoDBRelation.getClass())
 }
