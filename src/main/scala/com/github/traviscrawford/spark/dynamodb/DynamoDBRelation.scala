@@ -171,10 +171,7 @@ private object DynamoDBRelation extends Logging {
           .map(math.ceil(_).toInt)
 
         maybeConsumedCapacityUnits.foreach(consumedCapacityUnits => {
-          val waited = rateLimiter.acquire(consumedCapacityUnits)
-          if (waited >= 1) {
-            log.info(s"Segment ${config.segment} waited $waited seconds before making this request.")
-          }
+          rateLimiter.acquire(consumedCapacityUnits)
         })
       })
 
