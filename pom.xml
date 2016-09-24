@@ -183,6 +183,11 @@
       <version>1.10.68</version>
     </dependency>
     <dependency>
+      <groupId>com.twitter</groupId>
+      <artifactId>util-app_2.10</artifactId>
+      <version>6.34.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.10</artifactId>
       <version>1.6.1</version>
