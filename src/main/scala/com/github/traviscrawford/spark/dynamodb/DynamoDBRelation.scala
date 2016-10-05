@@ -34,7 +34,7 @@ import scala.util.control.NonFatal
   * @param maybeSchema Schema of the DynamoDB table.
   * @param maybeCredentials By default, [[com.amazonaws.auth.DefaultAWSCredentialsProviderChain]]
   *   will be used, which, which will work for most users. If you have a custom credentials
-  *   provider chain it can be provided here.
+  *   provider it can be provided here.
   * @param maybeEndpoint Endpoint to connect to DynamoDB on. This is intended for tests.
   * @see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
   */
@@ -109,7 +109,7 @@ private object DynamoDBRelation extends Logging {
 
     val amazonDynamoDBClient = maybeCredentials match {
       case Some(credentialsClassName) =>
-        logInfo(s"Using AWSCredentialsProviderChain $credentialsClassName")
+        logInfo(s"Using AWSCredentialsProvider $credentialsClassName")
         val credentials = Class.forName(credentialsClassName)
           .newInstance().asInstanceOf[AWSCredentialsProvider]
         new AmazonDynamoDBClient(credentials)
