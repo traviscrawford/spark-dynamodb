@@ -87,7 +87,7 @@ For details about Spark SQL schemas, see
 | `rate_limit_per_segment` | Max number of read capacity units per second each scan segment will consume from the DynamoDB table. Default: no rate limit |
 | `page_size` | Scan page size. Default: `1000` |
 | `segments` | Number of segments to scan the DynamoDB table with. |
-| `aws_credentials_provider_chain` | Class name of the AWS provider chain to use when connecting to DynamoDB. |
+| `aws_credentials_provider` | Class name of the AWS credentials provider to use when connecting to DynamoDB. |
 | `endpoint` | DynamoDB client endpoint in `http://localhost:8000` format. This is generally not needed and intended for unit tests. |
 
 ## RDD Usage
