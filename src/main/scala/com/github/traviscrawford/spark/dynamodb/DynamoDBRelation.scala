@@ -2,7 +2,7 @@ package com.github.traviscrawford.spark.dynamodb
 
 import java.util.concurrent.atomic.AtomicLong
 
-import com.amazonaws.auth.AWSCredentialsProviderChain
+import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.regions.Region
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
@@ -111,7 +111,7 @@ private object DynamoDBRelation extends Logging {
       case Some(credentialsClassName) =>
         logInfo(s"Using AWSCredentialsProviderChain $credentialsClassName")
         val credentials = Class.forName(credentialsClassName)
-          .newInstance().asInstanceOf[AWSCredentialsProviderChain]
+          .newInstance().asInstanceOf[AWSCredentialsProvider]
         new AmazonDynamoDBClient(credentials)
       case None => new AmazonDynamoDBClient()
     }
