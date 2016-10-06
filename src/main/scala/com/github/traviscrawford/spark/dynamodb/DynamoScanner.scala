@@ -16,7 +16,7 @@ import scala.collection.JavaConversions.asScalaIterator
   * For details, see:
   * http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
   */
-object DynamoScanner {
+object DynamoScanner extends BaseScanner {
   private val log = LoggerFactory.getLogger(this.getClass)
 
   def apply(
@@ -52,7 +52,7 @@ object DynamoScanner {
       RateLimiter.create(rateLimit)
     })
 
-    val table = DynamoDBRelation.getTable(
+    val table = getTable(
       tableName = config.table,
       maybeCredentials = config.maybeCredentials,
       maybeRegion = config.maybeRegion,
