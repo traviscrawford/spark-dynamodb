@@ -2,7 +2,7 @@ package com.github.traviscrawford.spark.dynamodb
 
 import java.util.concurrent.atomic.AtomicLong
 
-import com.amazonaws.auth.AWSCredentialsProviderChain
+import com.amazonaws.auth.AWSCredentialsProvider
 import com.amazonaws.regions.Region
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
@@ -35,7 +35,7 @@ import scala.util.control.NonFatal
   * @param maybeSchema Schema of the DynamoDB table.
   * @param maybeCredentials By default, [[com.amazonaws.auth.DefaultAWSCredentialsProviderChain]]
   *   will be used, which, which will work for most users. If you have a custom credentials
-  *   provider chain it can be provided here.
+  *   provider it can be provided here.
   * @param maybeEndpoint Endpoint to connect to DynamoDB on. This is intended for tests.
   * @see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
   */
@@ -110,9 +110,9 @@ private object DynamoDBRelation {
 
     val amazonDynamoDBClient = maybeCredentials match {
       case Some(credentialsClassName) =>
-        log.info(s"Using AWSCredentialsProviderChain $credentialsClassName")
+        logInfo(s"Using AWSCredentialsProvider $credentialsClassName")
         val credentials = Class.forName(credentialsClassName)
-          .newInstance().asInstanceOf[AWSCredentialsProviderChain]
+          .newInstance().asInstanceOf[AWSCredentialsProvider]
         new AmazonDynamoDBClient(credentials)
       case None => new AmazonDynamoDBClient()
     }
@@ -172,10 +172,7 @@ private object DynamoDBRelation {
           .map(math.ceil(_).toInt)
 
         maybeConsumedCapacityUnits.foreach(consumedCapacityUnits => {
-          val waited = rateLimiter.acquire(consumedCapacityUnits)
-          if (waited >= 1) {
-            log.info(s"Segment ${config.segment} waited $waited seconds before making this request.")
-          }
+          rateLimiter.acquire(consumedCapacityUnits)
         })
       })
 

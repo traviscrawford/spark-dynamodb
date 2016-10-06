@@ -1,19 +1,22 @@
 # DynamoDB Data Source for Apache Spark
 
 This library provides support for reading an [Amazon DynamoDB](https://aws.amazon.com/dynamodb/)
-table as an [Apache Spark](https://spark.apache.org/) DataFrame. Users can run ad-hoc SQL
-queries directly against DynamoDB tables, and easily build ETL pipelines that load
-DynamoDB tables into another system. This library was created by the Product Science team
-at [Medium](https://medium.com/).
+table with [Apache Spark](https://spark.apache.org/).
+
+Tables can be read directly as a DataFrame, or as an RDD of stringified JSON. Users can run ad-hoc
+SQL queries directly against DynamoDB tables, and easily build ETL pipelines that load DynamoDB
+tables into another system. This library was created by the Data Platform team at
+[Medium](https://medium.com/).
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
 - [Installation](#installation)
-- [Usage](#usage)
-- [Schemas](#schemas)
-- [Configuration](#configuration)
+- [DataFrame Usage](#dataframe-usage)
+  - [Schemas](#schemas)
+  - [Configuration](#configuration)
+- [RDD Usage](#rdd-usage)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -35,7 +38,7 @@ Start a spark shell with this library as a dependency:
 $ spark-shell --packages com.github.traviscrawford:spark-dynamodb:0.0.2
 ```
 
-## Usage
+## DataFrame Usage
 
 You can register a DynamoDB table and run SQL queries against it, or query with the Spark SQL DSL.
 The schema will be inferred by sampling items in the table, or you can provide your own schema.
@@ -57,7 +60,7 @@ val data = sqlContext.sql("select username from users where username = 'tc'")
 val data2 = users.select("username").filter($"username" = "tc")
 ```
 
-## Schemas
+### Schemas
 
 DynamoDB tables do not have a schema beyond the primary key(s). If no schema is provided,
 the schema will be inferred from a sample of items in the table. If items with multiple
@@ -77,12 +80,45 @@ val schema = StructType(Seq(
 For details about Spark SQL schemas, see
 [StructType](http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.types.StructType).
 
-## Configuration
+### Configuration
 
 | Option | Description |
 | --- | --- |
 | `rate_limit_per_segment` | Max number of read capacity units per second each scan segment will consume from the DynamoDB table. Default: no rate limit |
 | `page_size` | Scan page size. Default: `1000` |
 | `segments` | Number of segments to scan the DynamoDB table with. |
-| `aws_credentials_provider_chain` | Class name of the AWS provider chain to use when connecting to DynamoDB. |
+| `aws_credentials_provider` | Class name of the AWS credentials provider to use when connecting to DynamoDB. |
 | `endpoint` | DynamoDB client endpoint in `http://localhost:8000` format. This is generally not needed and intended for unit tests. |
+
+## RDD Usage
+
+Like most NoSQL databases, DynamoDB does not strictly enforce schemas. For this reason it may not be appropriate to
+load your DynamoDB tables as Spark DataFrames. This library provides support for loading DynamoDB tables as
+`RDD[String]` containing stringified JSON.
+
+Scan a table from the command-line with the following command. Spark requires the name of your job jar,
+though you may not have one when scanning a table - simply put a placeholder name to satisfy the launcher script.
+
+```bash
+spark-submit \
+  --class com.github.traviscrawford.spark.dynamodb.DynamoBackupJob \
+  --packages com.github.traviscrawford:spark-dynamodb:0.0.4-SNAPSHOT \
+  fakeJar
+```
+
+The following flags are supported:
+
+```
+usage: com.github.traviscrawford.spark.dynamodb.DynamoBackupJob$ [<flag>...]
+flags:
+  -credentials='java.lang.String': Optional AWS credentials provider class name.
+  -help='false': Show this help
+  -output='java.lang.String': Path to write the DynamoDB table backup.
+  -pageSize='1000': Page size of each DynamoDB request.
+  -rateLimit='Int': Max number of read capacity units per second each scan segment will consume.
+  -region='java.lang.String': Region of the DynamoDB table to scan.
+  -table='java.lang.String': DynamoDB table to scan.
+  -totalSegments='1': Number of DynamoDB parallel scan segments.
+```
+
+To integrate with your own code, see `DynamoScanner`.

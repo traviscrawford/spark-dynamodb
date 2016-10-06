@@ -39,7 +39,7 @@ private[dynamodb] class DefaultSource
       maybeSegments = parameters.get("segments"),
       maybeRateLimit = parameters.get("rate_limit_per_segment").map(Integer.parseInt),
       maybeSchema = maybeSchema,
-      maybeCredentials = parameters.get("aws_credentials_provider_chain"),
+      maybeCredentials = parameters.get("aws_credentials_provider"),
       maybeEndpoint = parameters.get("endpoint"))(sqlContext)
   }
 }
