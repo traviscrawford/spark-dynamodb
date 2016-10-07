@@ -3,7 +3,6 @@ package com.github.traviscrawford.spark.dynamodb
 import java.util.concurrent.atomic.AtomicLong
 
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
-import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.rdd.RDD
@@ -76,9 +75,17 @@ private[dynamodb] case class DynamoDBRelation(
 
     val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
-      ScanConfig(schema, requiredColumns, tableName, segment = idx,
-        totalSegments = segments.length, pageSize, maybeRateLimit = maybeRateLimit,
-        maybeCredentials, maybeRegion, maybeEndpoint)
+      ScanConfig(
+        table = tableName,
+        segment = idx,
+        totalSegments = segments.length,
+        pageSize = pageSize,
+        maybeSchema = Some(schema),
+        maybeRequiredColumns = Some(requiredColumns),
+        maybeRateLimit = maybeRateLimit,
+        maybeCredentials = maybeCredentials,
+        maybeRegion = maybeRegion,
+        maybeEndpoint = maybeEndpoint)
     })
 
     val tableDesc = Table.describe()
@@ -93,25 +100,22 @@ private[dynamodb] case class DynamoDBRelation(
       .flatMap(scan)
   }
 
+  override def getScanSpec(config: ScanConfig): ScanSpec = {
+    config.maybeRequiredColumns match {
+      case Some(requiredColumns) =>
+        val expressionSpecBuilder =
+          new ExpressionSpecBuilder().addProjections(requiredColumns: _*)
+        super
+          .getScanSpec(config)
+          .withExpressionSpec(expressionSpecBuilder.buildForScan())
+      case None => super.getScanSpec(config)
+    }
+  }
+
   def scan(config: ScanConfig): Iterator[Row] = {
-    val expressionSpecBuilder = new ExpressionSpecBuilder()
-      .addProjections(config.requiredColumns: _*)
-
-    val scanSpec = new ScanSpec()
-      .withMaxPageSize(config.pageSize)
-      .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
-      .withExpressionSpec(expressionSpecBuilder.buildForScan())
-      .withTotalSegments(config.totalSegments)
-      .withSegment(config.segment)
-
-    val table = getTable(
-      tableName = config.tableName,
-      maybeCredentials = config.maybeCredentials,
-      maybeRegion = config.maybeRegion,
-      maybeEndpoint = config.maybeEndpoint)
-
+    val scanSpec = getScanSpec(config)
+    val table = getTable(config)
     val result = table.scan(scanSpec)
-
     val failureCounter = new AtomicLong()
 
     val maybeRateLimiter = config.maybeRateLimit.map(rateLimit => {
@@ -124,7 +128,7 @@ private[dynamodb] case class DynamoDBRelation(
       // This result set resides in local memory.
       val rows = page.iterator().flatMap(item => {
         try {
-          Some(ItemConverter.toRow(item, config.schema))
+          Some(ItemConverter.toRow(item, config.maybeSchema.get))
         } catch {
           case NonFatal(err) =>
             // Log some example conversion failures but do not spam the logs.
@@ -151,15 +155,3 @@ private[dynamodb] case class DynamoDBRelation(
     })
   }
 }
-
-private case class ScanConfig(
-  schema: StructType,
-  requiredColumns: Array[String],
-  tableName: String,
-  segment: Int,
-  totalSegments: Int,
-  pageSize: Int,
-  maybeRateLimit: Option[Int],
-  maybeCredentials: Option[String],
-  maybeRegion: Option[String],
-  maybeEndpoint: Option[String])
