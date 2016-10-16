@@ -3,23 +3,27 @@ package com.github.traviscrawford.spark.dynamodb
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.Item
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.SQLContext
+import com.amazonaws.services.dynamodbv2.model._
+import org.apache.spark.sql.SparkSession
 import org.scalatest._
 
 import scala.collection.JavaConversions._
 
-trait BaseSpec extends FlatSpec with Matchers {
-  protected val sc = BaseSpec.sc
-  protected val sqlContext = BaseSpec.sqlContext
+/** Test Spark's DynamoDB integration.
+  *
+  * This runs during Maven's integration-test phase.
+  *
+  * {{{
+  *   mvn integration-test
+  * }}}
+  *
+  * @see http://dynamodb.jcabi.com/
+  */
+trait BaseIntegrationSpec extends FlatSpec with Matchers {
+  protected val spark = BaseIntegrationSpec.spark
 
-  protected val LocalDynamoDBEndpoint = "http://localhost:8000"
+  protected val LocalDynamoDBPort = System.getProperty("dynamodb.port")
+  protected val LocalDynamoDBEndpoint = s"http://localhost:$LocalDynamoDBPort"
   protected val TestUsersTableName = "test_users"
   protected val UserIdKey = "user_id"
   protected val UsernameKey = "username"
@@ -60,8 +64,9 @@ trait BaseSpec extends FlatSpec with Matchers {
   }
 }
 
-object BaseSpec {
-  private val conf = new SparkConf().setAppName(this.getClass.getName).setMaster("local")
-  val sc = new SparkContext(conf)
-  val sqlContext = new SQLContext(sc)
+object BaseIntegrationSpec {
+  private val spark = SparkSession.builder
+    .master("local")
+    .appName(this.getClass.getName)
+    .getOrCreate()
 }
