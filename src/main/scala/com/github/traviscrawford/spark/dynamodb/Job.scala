@@ -3,8 +3,8 @@ package com.github.traviscrawford.spark.dynamodb
 import com.twitter.app.FlagParseException
 import com.twitter.app.FlagUsageError
 import com.twitter.app.Flags
-import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
 import org.slf4j.LoggerFactory
 
 /** Base class for Spark jobs. */

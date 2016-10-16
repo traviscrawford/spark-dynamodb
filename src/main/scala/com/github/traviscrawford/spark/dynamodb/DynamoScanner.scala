@@ -1,7 +1,5 @@
 package com.github.traviscrawford.spark.dynamodb
 
-import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
-import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -16,7 +14,7 @@ import scala.collection.JavaConversions.asScalaIterator
   * For details, see:
   * http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
   */
-object DynamoScanner {
+object DynamoScanner extends BaseScanner {
   private val log = LoggerFactory.getLogger(this.getClass)
 
   def apply(
@@ -32,7 +30,7 @@ object DynamoScanner {
 
     val segments = 0 until totalSegments
     val scanConfigs = segments.map(idx => {
-      BackupConfig(
+      ScanConfig(
         table = table,
         segment = idx,
         totalSegments = segments.length,
@@ -46,24 +44,14 @@ object DynamoScanner {
     sc.parallelize(scanConfigs, scanConfigs.length).flatMap(scan)
   }
 
-  private def scan(config: BackupConfig): Iterator[String] = {
+  private def scan(config: ScanConfig): Iterator[String] = {
     val maybeRateLimiter = config.maybeRateLimit.map(rateLimit => {
       log.info(s"Segment ${config.segment} using rate limit of $rateLimit")
       RateLimiter.create(rateLimit)
     })
 
-    val table = DynamoDBRelation.getTable(
-      tableName = config.table,
-      maybeCredentials = config.maybeCredentials,
-      maybeRegion = config.maybeRegion,
-      maybeEndpoint = config.maybeEndpoint)
-
-    val scanSpec = new ScanSpec()
-      .withMaxPageSize(config.pageSize)
-      .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
-      .withTotalSegments(config.totalSegments)
-      .withSegment(config.segment)
-
+    val table = getTable(config)
+    val scanSpec = getScanSpec(config)
     val result = table.scan(scanSpec)
 
     // Each `pages.next` call results in a DynamoDB network call.
@@ -85,13 +73,3 @@ object DynamoScanner {
     })
   }
 }
-
-private case class BackupConfig(
-  table: String,
-  segment: Int,
-  totalSegments: Int,
-  pageSize: Int,
-  maybeRateLimit: Option[Int] = None,
-  maybeCredentials: Option[String] = None,
-  maybeRegion: Option[String] = None,
-  maybeEndpoint: Option[String] = None)

@@ -2,14 +2,7 @@ package com.github.traviscrawford.spark.dynamodb
 
 import java.util.concurrent.atomic.AtomicLong
 
-import com.amazonaws.auth.AWSCredentialsProvider
-import com.amazonaws.regions.Region
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
-import com.amazonaws.services.dynamodbv2.document.DynamoDB
-import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
-import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.rdd.RDD
@@ -19,7 +12,6 @@ import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.sources.PrunedScan
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
-import Logger.log
 
 import scala.collection.JavaConversions.asScalaIterator
 import scala.util.control.NonFatal
@@ -49,9 +41,11 @@ private[dynamodb] case class DynamoDBRelation(
   maybeCredentials: Option[String] = None,
   maybeEndpoint: Option[String])
   (@transient val sqlContext: SQLContext)
-  extends BaseRelation with PrunedScan {
+  extends BaseRelation with PrunedScan with BaseScanner {
 
-  private val Table = DynamoDBRelation.getTable(
+  private val log = LoggerFactory.getLogger(this.getClass)
+
+  @transient private lazy val Table = getTable(
     tableName, maybeCredentials, maybeRegion, maybeEndpoint)
 
   private val pageSize = Integer.parseInt(maybePageSize.getOrElse("1000"))
@@ -81,9 +75,17 @@ private[dynamodb] case class DynamoDBRelation(
 
     val segments = 0 until Segments
     val scanConfigs = segments.map(idx => {
-      ScanConfig(schema, requiredColumns, tableName, segment = idx,
-        totalSegments = segments.length, pageSize, maybeRateLimit = maybeRateLimit,
-        maybeCredentials, maybeRegion, maybeEndpoint)
+      ScanConfig(
+        table = tableName,
+        segment = idx,
+        totalSegments = segments.length,
+        pageSize = pageSize,
+        maybeSchema = Some(schema),
+        maybeRequiredColumns = Some(requiredColumns),
+        maybeRateLimit = maybeRateLimit,
+        maybeCredentials = maybeCredentials,
+        maybeRegion = maybeRegion,
+        maybeEndpoint = maybeEndpoint)
     })
 
     val tableDesc = Table.describe()
@@ -95,52 +97,25 @@ private[dynamodb] case class DynamoDBRelation(
 
     sqlContext.sparkContext
       .parallelize(scanConfigs, scanConfigs.length)
-      .flatMap(DynamoDBRelation.scan)
+      .flatMap(scan)
   }
-}
 
-private object DynamoDBRelation {
-
-  def getTable(
-      tableName: String,
-      maybeCredentials: Option[String],
-      maybeRegion: Option[String],
-      maybeEndpoint: Option[String])
-    : Table = {
-
-    val amazonDynamoDBClient = maybeCredentials match {
-      case Some(credentialsClassName) =>
-        logInfo(s"Using AWSCredentialsProvider $credentialsClassName")
-        val credentials = Class.forName(credentialsClassName)
-          .newInstance().asInstanceOf[AWSCredentialsProvider]
-        new AmazonDynamoDBClient(credentials)
-      case None => new AmazonDynamoDBClient()
+  override def getScanSpec(config: ScanConfig): ScanSpec = {
+    config.maybeRequiredColumns match {
+      case Some(requiredColumns) =>
+        val expressionSpecBuilder =
+          new ExpressionSpecBuilder().addProjections(requiredColumns: _*)
+        super
+          .getScanSpec(config)
+          .withExpressionSpec(expressionSpecBuilder.buildForScan())
+      case None => super.getScanSpec(config)
     }
-
-    maybeRegion.foreach(r => amazonDynamoDBClient.setRegion(Region.getRegion(Regions.fromName(r))))
-    maybeEndpoint.foreach(amazonDynamoDBClient.setEndpoint) // for tests
-    new DynamoDB(amazonDynamoDBClient).getTable(tableName)
   }
 
   def scan(config: ScanConfig): Iterator[Row] = {
-    val expressionSpecBuilder = new ExpressionSpecBuilder()
-      .addProjections(config.requiredColumns: _*)
-
-    val scanSpec = new ScanSpec()
-      .withMaxPageSize(config.pageSize)
-      .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
-      .withExpressionSpec(expressionSpecBuilder.buildForScan())
-      .withTotalSegments(config.totalSegments)
-      .withSegment(config.segment)
-
-    val table = getTable(
-      tableName = config.tableName,
-      maybeCredentials = config.maybeCredentials,
-      maybeRegion = config.maybeRegion,
-      maybeEndpoint = config.maybeEndpoint)
-
+    val scanSpec = getScanSpec(config)
+    val table = getTable(config)
     val result = table.scan(scanSpec)
-
     val failureCounter = new AtomicLong()
 
     val maybeRateLimiter = config.maybeRateLimit.map(rateLimit => {
@@ -153,7 +128,7 @@ private object DynamoDBRelation {
       // This result set resides in local memory.
       val rows = page.iterator().flatMap(item => {
         try {
-          Some(ItemConverter.toRow(item, config.schema))
+          Some(ItemConverter.toRow(item, config.maybeSchema.get))
         } catch {
           case NonFatal(err) =>
             // Log some example conversion failures but do not spam the logs.
@@ -179,20 +154,4 @@ private object DynamoDBRelation {
       rows
     })
   }
-}
-
-private case class ScanConfig(
-  schema: StructType,
-  requiredColumns: Array[String],
-  tableName: String,
-  segment: Int,
-  totalSegments: Int,
-  pageSize: Int,
-  maybeRateLimit: Option[Int],
-  maybeCredentials: Option[String],
-  maybeRegion: Option[String],
-  maybeEndpoint: Option[String])
-
-object Logger extends Serializable {
-  @transient lazy val log = LoggerFactory.getLogger(DynamoDBRelation.getClass())
 }
