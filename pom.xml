@@ -263,13 +263,13 @@
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>util-app_2.10</artifactId>
+      <artifactId>util-app_2.11</artifactId>
       <version>6.34.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.spark</groupId>
       <artifactId>spark-sql_2.11</artifactId>
-      <version>2.0.0</version>
+      <version>2.0.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
