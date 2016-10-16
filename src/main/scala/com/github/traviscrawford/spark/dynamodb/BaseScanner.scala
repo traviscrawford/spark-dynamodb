@@ -64,3 +64,4 @@ private[dynamodb] case class ScanConfig(
   maybeRegion: Option[String] = None,
   maybeEndpoint: Option[String] = None
 )
+
