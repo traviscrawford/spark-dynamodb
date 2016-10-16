@@ -72,3 +72,4 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
       contain theSameElementsAs Seq(Row(1, "a"))
   }
 }
+
