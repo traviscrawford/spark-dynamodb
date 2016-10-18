@@ -7,7 +7,7 @@ import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.sources.PrunedScan
 import org.apache.spark.sql.types.StructType
@@ -40,7 +40,7 @@ private[dynamodb] case class DynamoDBRelation(
   maybeSchema: Option[StructType],
   maybeCredentials: Option[String] = None,
   maybeEndpoint: Option[String])
-  (@transient val spark: SparkSession)
+  (@transient val sqlContext: SQLContext)
   extends BaseRelation with PrunedScan with BaseScanner {
 
   private val log = LoggerFactory.getLogger(this.getClass)
@@ -58,8 +58,8 @@ private[dynamodb] case class DynamoDBRelation(
     val scanSpec = new ScanSpec().withMaxPageSize(pageSize)
     val result = Table.scan(scanSpec)
     val json = result.firstPage().iterator().map(_.toJSON)
-    val jsonRDD = spark.sparkContext.parallelize(json.toSeq)
-    val jsonDF = spark.read.json(jsonRDD)
+    val jsonRDD = sqlContext.sparkContext.parallelize(json.toSeq)
+    val jsonDF = sqlContext.read.json(jsonRDD)
     jsonDF.schema
   })
 
@@ -95,7 +95,7 @@ private[dynamodb] case class DynamoDBRelation(
 
     log.info(s"Schema for tableName ${tableDesc.getTableName}: $schema")
 
-    spark.sparkContext
+    sqlContext.sparkContext
       .parallelize(scanConfigs, scanConfigs.length)
       .flatMap(scan)
   }
