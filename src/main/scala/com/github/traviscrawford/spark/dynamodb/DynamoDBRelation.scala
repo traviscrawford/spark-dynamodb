@@ -18,17 +18,17 @@ import scala.util.control.NonFatal
 
 /** Scan a DynamoDB table for use as a [[org.apache.spark.sql.DataFrame]].
   *
-  * @param tableName Name of the DynamoDB table to scan.
-  * @param maybePageSize DynamoDB request page size.
-  * @param maybeSegments Number of segments to scan the table with.
-  * @param maybeRateLimit Max number of read capacity units per second each scan segment will consume from
-  *   the DynamoDB table.
-  * @param maybeRegion AWS region of the table to scan.
-  * @param maybeSchema Schema of the DynamoDB table.
+  * @param tableName        Name of the DynamoDB table to scan.
+  * @param maybePageSize    DynamoDB request page size.
+  * @param maybeSegments    Number of segments to scan the table with.
+  * @param maybeRateLimit   Max number of read capacity units per second each scan segment will consume from
+  *                         the DynamoDB table.
+  * @param maybeRegion      AWS region of the table to scan.
+  * @param maybeSchema      Schema of the DynamoDB table.
   * @param maybeCredentials By default, [[com.amazonaws.auth.DefaultAWSCredentialsProviderChain]]
-  *   will be used, which, which will work for most users. If you have a custom credentials
-  *   provider it can be provided here.
-  * @param maybeEndpoint Endpoint to connect to DynamoDB on. This is intended for tests.
+  *                         will be used, which, which will work for most users. If you have a custom credentials
+  *                         provider it can be provided here.
+  * @param maybeEndpoint    Endpoint to connect to DynamoDB on. This is intended for tests.
   * @see http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/QueryAndScanGuidelines.html
   */
 private[dynamodb] case class DynamoDBRelation(

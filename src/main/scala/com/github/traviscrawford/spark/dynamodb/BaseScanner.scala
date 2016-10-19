@@ -11,7 +11,6 @@ import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
-
 private[dynamodb] trait BaseScanner {
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -65,3 +64,4 @@ private[dynamodb] case class ScanConfig(
   maybeRegion: Option[String] = None,
   maybeEndpoint: Option[String] = None
 )
+
