@@ -8,7 +8,7 @@ table with [Apache Spark](https://spark.apache.org/).
 Tables can be read directly as a DataFrame, or as an RDD of stringified JSON. Users can run ad-hoc
 SQL queries directly against DynamoDB tables, and easily build ETL pipelines that load DynamoDB
 tables into another system. This library was created by the Data Platform team at
-[Medium](https://medium.com/).
+[Medium](https://medium.engineering/mediums-dynamodb-data-source-for-apache-spark-62c6599a6dfd#.x6juanfsy).
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
