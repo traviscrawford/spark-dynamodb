@@ -30,14 +30,14 @@ Depend on this library in your application with the following Maven coordinates:
 <dependency>
   <groupId>com.github.traviscrawford</groupId>
   <artifactId>spark-dynamodb</artifactId>
-  <version>0.0.5</version>
+  <version>0.0.6</version>
 </dependency>
 ```
 
 Start a spark shell with this library as a dependency:
 
 ```
-$ spark-shell --packages com.github.traviscrawford:spark-dynamodb:0.0.5
+$ spark-shell --packages com.github.traviscrawford:spark-dynamodb:0.0.6
 ```
 
 ## DataFrame Usage
@@ -104,7 +104,7 @@ though you may not have one when scanning a table - simply put a placeholder nam
 ```bash
 spark-submit \
   --class com.github.traviscrawford.spark.dynamodb.DynamoBackupJob \
-  --packages com.github.traviscrawford:spark-dynamodb:0.0.5 \
+  --packages com.github.traviscrawford:spark-dynamodb:0.0.6 \
   fakeJar
 ```
 
