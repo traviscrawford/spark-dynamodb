@@ -2,7 +2,9 @@ organization := "com.github.traviscrawford"
 
 name := "spark-dynamodb"
 
-version := "0.0.1-SNAPSHOT"
+version := "0.0.2-SNAPSHOT"
+
+s3sse := true
 
 crossScalaVersions := Seq("2.10.6", "2.11.8")
 

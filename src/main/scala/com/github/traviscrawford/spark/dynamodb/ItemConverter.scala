@@ -6,6 +6,8 @@ import org.apache.spark.sql.types._
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 
+import scala.annotation.tailrec
+
 private[dynamodb] object ItemConverter {
   private implicit val Formats = DefaultFormats
 
@@ -20,23 +22,34 @@ private[dynamodb] object ItemConverter {
     val values: Seq[Any] = requiredColumns.map(field => {
       val jsonFieldValue = json \ field
 
-      jsonFieldValue match {
-        case JNothing =>
-          // item does not have a value for this field
-          // scalastyle:off null
-          null
-        // scalastyle:on null
-        case _ =>
-          schema(field).dataType match {
-            case IntegerType => jsonFieldValue.extract[Int]
-            case LongType => jsonFieldValue.extract[Long]
-            case DoubleType => jsonFieldValue.extract[Double]
-            case StringType => jsonFieldValue.extract[String]
-            case BooleanType => jsonFieldValue.extract[Boolean]
-          }
-      }
+      extractValue(schema(field).dataType, jsonFieldValue)
+
     })
 
     Row.fromSeq(values)
+  }
+
+  private def extractValue(schemaType: DataType, field: JValue): Any = {
+    field match {
+      case JNothing => null
+      case _ => schemaType match {
+        case IntegerType => field.extract[Int]
+        case LongType => field.extract[Long]
+        case DoubleType => field.extract[Double]
+        case StringType => field.extract[String]
+        case BooleanType => field.extract[Boolean]
+        case ArrayType(elementType, _) => elementType match {
+          case IntegerType => field.extract[List[Int]]
+          case LongType => field.extract[List[Long]]
+          case DoubleType => field.extract[List[Double]]
+          case StringType => field.extract[List[String]]
+          case BooleanType => field.extract[List[Boolean]]
+          case StructType(fields) => field match {
+            case JArray(fields) => fields.map(extractValue(elementType, _))
+          }
+        }
+        case StructType(fields) => Row.fromSeq(fields.map(f => extractValue(f.dataType, field \ f.name)))
+      }
+    }
   }
 }
