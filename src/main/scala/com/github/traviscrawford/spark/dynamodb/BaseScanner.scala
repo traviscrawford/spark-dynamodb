@@ -58,7 +58,7 @@ private[dynamodb] trait BaseScanner {
           .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
           .withTotalSegments(config.totalSegments)
           .withSegment(config.segment)
-          .withScanFilters(config.maybeFilters.get)
+          .withScanFilters(config.maybeFilters.get : _*)
 
     }
 
@@ -77,7 +77,7 @@ private[dynamodb] case class ScanConfig(
   maybeCredentials: Option[String] = None,
   maybeRegion: Option[String] = None,
   maybeEndpoint: Option[String] = None,
-  maybeFilters : Option[ScanFilter] = None
+  maybeFilters : Option[List[ScanFilter]] = None
 
 )
 

@@ -27,7 +27,7 @@ object DynamoScanner extends BaseScanner {
     maybeRateLimit: Option[Int] = None,
     maybeRegion: Option[String] = None,
     maybeEndpoint: Option[String] = None,
-    maybeFilters : Option[ScanFilter] = None)
+    maybeFilters : Option[List[ScanFilter]] = None)
   : RDD[String] = {
 
     val segments = 0 until totalSegments
