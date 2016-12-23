@@ -1,5 +1,6 @@
 package com.github.traviscrawford.spark.dynamodb
 
+import com.amazonaws.services.dynamodbv2.document.ScanFilter
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
@@ -25,7 +26,8 @@ object DynamoScanner extends BaseScanner {
     maybeCredentials: Option[String] = None,
     maybeRateLimit: Option[Int] = None,
     maybeRegion: Option[String] = None,
-    maybeEndpoint: Option[String] = None)
+    maybeEndpoint: Option[String] = None,
+    maybeFilters : Option[ScanFilter] = None)
   : RDD[String] = {
 
     val segments = 0 until totalSegments
@@ -38,7 +40,8 @@ object DynamoScanner extends BaseScanner {
         maybeRateLimit = maybeRateLimit,
         maybeCredentials = maybeCredentials,
         maybeRegion = maybeRegion,
-        maybeEndpoint = maybeEndpoint)
+        maybeEndpoint = maybeEndpoint,
+        maybeFilters = maybeFilters)
     })
 
     sc.parallelize(scanConfigs, scanConfigs.length).flatMap(scan)

@@ -6,6 +6,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.Table
+import com.amazonaws.services.dynamodbv2.document.ScanFilter
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
 import org.apache.spark.sql.types.StructType
@@ -44,11 +45,24 @@ private[dynamodb] trait BaseScanner {
   }
 
   def getScanSpec(config: ScanConfig): ScanSpec = {
-    new ScanSpec()
-      .withMaxPageSize(config.pageSize)
-      .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
-      .withTotalSegments(config.totalSegments)
-      .withSegment(config.segment)
+    config.maybeFilters match {
+      case None =>
+        new ScanSpec()
+          .withMaxPageSize(config.pageSize)
+          .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+          .withTotalSegments(config.totalSegments)
+          .withSegment(config.segment)
+      case Some(x) =>
+        new ScanSpec()
+          .withMaxPageSize(config.pageSize)
+          .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+          .withTotalSegments(config.totalSegments)
+          .withSegment(config.segment)
+          .withScanFilters(config.maybeFilters.get)
+
+    }
+
+
   }
 }
 
@@ -62,6 +76,8 @@ private[dynamodb] case class ScanConfig(
   maybeRateLimit: Option[Int] = None,
   maybeCredentials: Option[String] = None,
   maybeRegion: Option[String] = None,
-  maybeEndpoint: Option[String] = None
+  maybeEndpoint: Option[String] = None,
+  maybeFilters : Option[ScanFilter] = None
+
 )
 
