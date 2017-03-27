@@ -10,38 +10,28 @@ import org.apache.hadoop.fs.Path
   * The full table is scanned and the results are stored in the given output path.
   */
 object DynamoBackupJob extends Job {
-  val region = flag[String]("region", "Region of the DynamoDB table to scan.")
+  private val region = flag[String]("region", "Region of the DynamoDB table to scan.")
 
-  val table = flag[String]("table", "DynamoDB table to scan.")
+  private val table = flag[String]("table", "DynamoDB table to scan.")
 
-  val totalSegments = flag("totalSegments", 1, "Number of DynamoDB parallel scan segments.")
+  private val totalSegments = flag("totalSegments", 1, "Number of DynamoDB parallel scan segments.")
 
-  val pageSize = flag("pageSize", 1000, "Page size of each DynamoDB request.")
+  private val pageSize = flag("pageSize", 1000, "Page size of each DynamoDB request.")
 
-  val output = flag[String]("output", "Path to write the DynamoDB table backup.")
+  private val output = flag[String]("output", "Path to write the DynamoDB table backup.")
 
-  val overwrite = flag("overwrite", false, "Set to true to overwrite output path.")
+  private val overwrite = flag("overwrite", false, "Set to true to overwrite output path.")
 
-  val credentials = flag[String]("credentials", "Optional AWS credentials provider class name.")
+  private val credentials = flag[String]("credentials",
+    "Optional AWS credentials provider class name.")
 
-  val rateLimit = flag[Int]("rateLimit",
+  private val rateLimit = flag[Int]("rateLimit",
     "Max number of read capacity units per second each scan segment will consume.")
 
   def run(): Unit = {
-    val maybeCredentials = credentials.isDefined match {
-      case true => Some(credentials())
-      case false => None
-    }
-
-    val maybeRateLimit = rateLimit.isDefined match {
-      case true => Some(rateLimit())
-      case false => None
-    }
-
-    val maybeRegion = region.isDefined match {
-      case true => Some(region())
-      case false => None
-    }
+    val maybeCredentials = if (credentials.isDefined) Some(credentials()) else None
+    val maybeRateLimit = if (rateLimit.isDefined) Some(rateLimit()) else None
+    val maybeRegion = if (region.isDefined) Some(region()) else None
 
     if (overwrite()) deleteOutputPath(output())
 

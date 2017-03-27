@@ -30,9 +30,7 @@ private[dynamodb] class DefaultSource
       throw new IllegalArgumentException("Required parameter 'table' was unspecified.")
     )
 
-    val readCapacityPct = Integer.parseInt(parameters.getOrElse("read_capacity_pct", "20"))
-
-    new DynamoDBRelation(
+    DynamoDBRelation(
       tableName = tableName,
       maybePageSize = parameters.get("page_size"),
       maybeRegion = parameters.get("region"),
