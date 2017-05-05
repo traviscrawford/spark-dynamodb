@@ -124,3 +124,18 @@ flags:
 ```
 
 To integrate with your own code, see `DynamoScanner`.
+
+Example usage:
+```
+    System.setProperty("aws.accessKeyId","your_access_key")
+    System.setProperty("aws.secretKey","your_secret_key")
+    val totalSegments = 10
+    val pageSize = 100
+    val credentials = Option("com.amazonaws.auth.SystemPropertiesCredentialsProvider")
+    val rateLimit = Option(10)
+    val endpoint = Option("https://dynamodb.eu-west-1.amazonaws.com")
+    val region = Option("eu-west-1")
+    val scanner =  DynamoScanner.apply(sc,"ikusiRaw",totalSegments,pageSize,credentials,rateLimit,region,endpoint)
+```
+Moreover, scan filters are supported in order to optimize the scan process whether is required (e.g. between dates). 
+
