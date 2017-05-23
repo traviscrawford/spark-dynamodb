@@ -8,6 +8,8 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
+import com.amazonaws.services.dynamodbv2.xspec.ScanExpressionSpec
+import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
 
@@ -44,11 +46,15 @@ private[dynamodb] trait BaseScanner {
   }
 
   def getScanSpec(config: ScanConfig): ScanSpec = {
-    new ScanSpec()
+    val scanSpec = new ScanSpec()
       .withMaxPageSize(config.pageSize)
       .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
       .withTotalSegments(config.totalSegments)
       .withSegment(config.segment)
+
+    config.maybeRequiredColumns
+      .foreach(requiredColumns => scanSpec.withProjectionExpression(requiredColumns.mkString(",")))
+    scanSpec
   }
 }
 

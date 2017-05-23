@@ -98,18 +98,6 @@ private[dynamodb] case class DynamoDBRelation(
       .flatMap(scan)
   }
 
-  override def getScanSpec(config: ScanConfig): ScanSpec = {
-    config.maybeRequiredColumns match {
-      case Some(requiredColumns) =>
-        val expressionSpecBuilder =
-          new ExpressionSpecBuilder().addProjections(requiredColumns: _*)
-        super
-          .getScanSpec(config)
-          .withExpressionSpec(expressionSpecBuilder.buildForScan())
-      case None => super.getScanSpec(config)
-    }
-  }
-
   def scan(config: ScanConfig): Iterator[Row] = {
     val scanSpec = getScanSpec(config)
     val table = getTable(config)
