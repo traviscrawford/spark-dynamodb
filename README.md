@@ -91,6 +91,7 @@ For details about Spark SQL schemas, see
 | `segments` | Number of segments to scan the DynamoDB table with. |
 | `aws_credentials_provider` | Class name of the AWS credentials provider to use when connecting to DynamoDB. |
 | `endpoint` | DynamoDB client endpoint in `http://localhost:8000` format. This is generally not needed and intended for unit tests. |
+| `filter_expression` | DynamoDB scan filter expression to be performed server-side. This allows a partial table read into Spark. |
 
 ## RDD Usage
 
