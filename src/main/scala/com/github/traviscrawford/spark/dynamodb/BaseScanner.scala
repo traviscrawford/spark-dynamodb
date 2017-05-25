@@ -8,10 +8,10 @@ import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
 import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity
-import com.amazonaws.services.dynamodbv2.xspec.ScanExpressionSpec
-import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 import org.slf4j.LoggerFactory
+
+import scala.collection.JavaConverters._
 
 private[dynamodb] trait BaseScanner {
   private val log = LoggerFactory.getLogger(this.getClass)
@@ -54,6 +54,12 @@ private[dynamodb] trait BaseScanner {
 
     config.maybeRequiredColumns
       .foreach(requiredColumns => scanSpec.withProjectionExpression(requiredColumns.mkString(",")))
+    // Parse any filter expression passed in as an option
+    config.maybeFilterExpression.map(filterExpression => ParsedFilterExpression(filterExpression))
+      .foreach(parsedFilterExpression =>
+        scanSpec.withFilterExpression(parsedFilterExpression.expression)
+          .withNameMap(parsedFilterExpression.expressionNames.asJava)
+          .withValueMap(parsedFilterExpression.expressionValues.asJava))
     scanSpec
   }
 }
@@ -65,6 +71,7 @@ private[dynamodb] case class ScanConfig(
   pageSize: Int,
   maybeSchema: Option[StructType] = None,
   maybeRequiredColumns: Option[Array[String]] = None,
+  maybeFilterExpression: Option[String] = None,
   maybeRateLimit: Option[Int] = None,
   maybeCredentials: Option[String] = None,
   maybeRegion: Option[String] = None,

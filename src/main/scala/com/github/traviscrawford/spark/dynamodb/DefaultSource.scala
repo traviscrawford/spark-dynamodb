@@ -32,6 +32,7 @@ private[dynamodb] class DefaultSource
 
     DynamoDBRelation(
       tableName = tableName,
+      maybeFilterExpression = parameters.get("filter_expression"),
       maybePageSize = parameters.get("page_size"),
       maybeRegion = parameters.get("region"),
       maybeSegments = parameters.get("segments"),

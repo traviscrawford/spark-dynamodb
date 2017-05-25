@@ -3,7 +3,6 @@ package com.github.traviscrawford.spark.dynamodb
 import java.util.concurrent.atomic.AtomicLong
 
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
-import com.amazonaws.services.dynamodbv2.xspec.ExpressionSpecBuilder
 import com.google.common.util.concurrent.RateLimiter
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
@@ -33,6 +32,7 @@ import scala.util.control.NonFatal
   */
 private[dynamodb] case class DynamoDBRelation(
   tableName: String,
+  maybeFilterExpression: Option[String],
   maybePageSize: Option[String],
   maybeSegments: Option[String],
   maybeRateLimit: Option[Int],
@@ -80,6 +80,7 @@ private[dynamodb] case class DynamoDBRelation(
         pageSize = pageSize,
         maybeSchema = Some(schema),
         maybeRequiredColumns = Some(requiredColumns),
+        maybeFilterExpression = maybeFilterExpression,
         maybeRateLimit = maybeRateLimit,
         maybeCredentials = maybeCredentials,
         maybeRegion = maybeRegion,
