@@ -4,6 +4,9 @@ package com.github.traviscrawford.spark.dynamodb
   *
   * This will add Dynamo indirection so that reserved keywords can
   * be handled in filter expressions.
+  *
+  * Regex matching inspired by:
+  * https://ikaisays.com/2009/04/04/using-pattern-matching-with-regular-expressions-in-scala/
   */
 private object ParsedFilterExpression {
 
