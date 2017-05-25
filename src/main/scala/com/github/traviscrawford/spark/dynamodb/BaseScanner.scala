@@ -56,10 +56,13 @@ private[dynamodb] trait BaseScanner {
       .foreach(requiredColumns => scanSpec.withProjectionExpression(requiredColumns.mkString(",")))
     // Parse any filter expression passed in as an option
     config.maybeFilterExpression.map(filterExpression => ParsedFilterExpression(filterExpression))
-      .foreach(parsedFilterExpression =>
-        scanSpec.withFilterExpression(parsedFilterExpression.expression)
-          .withNameMap(parsedFilterExpression.expressionNames.asJava)
-          .withValueMap(parsedFilterExpression.expressionValues.asJava))
+      .foreach(parsedExpr => {
+        scanSpec.withFilterExpression(parsedExpr.expression)
+        Option(parsedExpr.expressionNames).filter(!_.isEmpty)
+          .foreach(exprNames => scanSpec.withNameMap(exprNames.asJava))
+        Option(parsedExpr.expressionValues).filter(!_.isEmpty)
+          .foreach(exprValues => scanSpec.withValueMap(exprValues.asJava))
+      })
     scanSpec
   }
 }
