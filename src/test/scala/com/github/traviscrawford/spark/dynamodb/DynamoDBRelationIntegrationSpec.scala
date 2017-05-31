@@ -71,5 +71,18 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     spark.sql("select * from users where username < 'b'").collect() should
       contain theSameElementsAs Seq(Row(1, "a"))
   }
+
+  it should "apply server side filter_expressions" in {
+    val df = spark.read
+      .schema(TestUsersTableSchema)
+      .option(EndpointKey, LocalDynamoDBEndpoint)
+      .option("filter_expression", "username <> b")
+      .dynamodb(TestUsersTableName)
+
+    df.createOrReplaceTempView("users")
+
+    spark.sql("select * from users where username <> 'c'").collect() should
+      contain theSameElementsAs Seq(Row(1, "a"))
+  }
 }
 

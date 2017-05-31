@@ -91,6 +91,38 @@ For details about Spark SQL schemas, see
 | `segments` | Number of segments to scan the DynamoDB table with. |
 | `aws_credentials_provider` | Class name of the AWS credentials provider to use when connecting to DynamoDB. |
 | `endpoint` | DynamoDB client endpoint in `http://localhost:8000` format. This is generally not needed and intended for unit tests. |
+| `filter_expression` | DynamoDB scan filter expression to be performed server-side. |
+
+#### Filter Expressions
+
+The `filter_expression` reader option allows you to pass filters directly to DynamoDB to be performed "server-side". That is,
+to be performed by DynamoDB servers before anything is loaded into Spark. In essence, this shifts load from your Spark
+instances onto your table-dedicated DynamoDB instances. This may be beneficial if you are using a shared Spark cluster and
+need to load a partial dataset from a large DynamoDB table.
+
+```
+import com.github.traviscrawford.spark.dynamodb._
+
+// Run server-side filter with string value (operations supported: =, >, <, >=, <=, <>)
+val tcUsers = sqlContext.read
+  // NOTE: No quotes (') around string value
+  .option("filter_expression", "username = tc")
+  .dynamodb("users")
+  
+// Strings can also use begins_with
+val beginsWithTCUsers = sqlConfext.read
+  // NOTE: No quotes (') around string value
+  .option("filter_Expression", "begins_with(username, tc)")
+  .dynamodb("users")
+
+// Run server-side filter with number value (operations supported: =, >, <, >=, <=, <>)
+val highLoginUsers = sqlContext.read
+  .option("filter_expression", "num_logins > 100")
+  .dynamodb("users")
+```
+
+For more information on DynamoDB Scan filters, see the AWS documentation [here](http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.FilterExpression).
+
 
 ## RDD Usage
 
