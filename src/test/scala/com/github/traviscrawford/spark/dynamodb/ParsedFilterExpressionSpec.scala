@@ -34,35 +34,35 @@ class ParsedFilterExpressionSpec extends FlatSpec with Matchers {
     parsedExpr.expressionValues should contain theSameElementsAs Map(":name" -> "myName")
   }
 
-  it should "corrector parse greaterThan expressions" in {
+  it should "correctly parse greaterThan expressions" in {
     val parsedExpr = ParsedFilterExpression("name > myName")
     parsedExpr.expression should be ("#name > :name")
     parsedExpr.expressionNames should contain theSameElementsAs Map("#name" -> "name")
     parsedExpr.expressionValues should contain theSameElementsAs Map(":name" -> "myName")
   }
 
-  it should "corrector parse greaterThanOrEquals expressions" in {
+  it should "correctly parse greaterThanOrEquals expressions" in {
     val parsedExpr = ParsedFilterExpression("name >= myName")
     parsedExpr.expression should be ("#name >= :name")
     parsedExpr.expressionNames should contain theSameElementsAs Map("#name" -> "name")
     parsedExpr.expressionValues should contain theSameElementsAs Map(":name" -> "myName")
   }
 
-  it should "corrector parse lessThan expressions" in {
+  it should "correctly parse lessThan expressions" in {
     val parsedExpr = ParsedFilterExpression("name < myName")
     parsedExpr.expression should be ("#name < :name")
     parsedExpr.expressionNames should contain theSameElementsAs Map("#name" -> "name")
     parsedExpr.expressionValues should contain theSameElementsAs Map(":name" -> "myName")
   }
 
-  it should "corrector parse lessThanOrEqual expressions" in {
+  it should "correctly parse lessThanOrEqual expressions" in {
     val parsedExpr = ParsedFilterExpression("name <= myName")
     parsedExpr.expression should be ("#name <= :name")
     parsedExpr.expressionNames should contain theSameElementsAs Map("#name" -> "name")
     parsedExpr.expressionValues should contain theSameElementsAs Map(":name" -> "myName")
   }
 
-  it should "corrector parse notEquals expressions" in {
+  it should "correctly parse notEquals expressions" in {
     val parsedExpr = ParsedFilterExpression("name <> myName")
     parsedExpr.expression should be ("#name <> :name")
     parsedExpr.expressionNames should contain theSameElementsAs Map("#name" -> "name")
