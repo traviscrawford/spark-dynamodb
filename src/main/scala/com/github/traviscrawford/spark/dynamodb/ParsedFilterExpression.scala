@@ -11,8 +11,8 @@ package com.github.traviscrawford.spark.dynamodb
 private object ParsedFilterExpression {
 
   private val CompareLongExpr = """(\w+) (=|>|<|>=|<=|<>) (\d+)""".r
-  private val CompareStringExpr = """(\w+) (=|>|<|>=|<=|<>) (\w+)""".r
-  private val BeginsWithExpr = """begins_with\((\w+), (\w+)\)""".r
+  private val CompareStringExpr = """(\w+) (=|>|<|>=|<=|<>) (\D+)""".r
+  private val BeginsWithExpr = """begins_with\((\w+), (\D+)\)""".r
 
   def apply(filterExpression: String): ParsedFilterExpression = {
     filterExpression match {
