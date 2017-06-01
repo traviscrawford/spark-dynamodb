@@ -13,6 +13,14 @@ class ParsedFilterExpressionSpec extends FlatSpec with Matchers {
     parsedExpr.expressionValues should contain theSameElementsAs Map(":name" -> "myName")
   }
 
+  it should "correctly parse compare string expressions with non-alphabetic characters" in {
+    val parsedExpr = ParsedFilterExpression("email = me_myself_i@domain.com")
+    parsedExpr.expression should be ("#email = :email")
+    parsedExpr.expressionNames should contain theSameElementsAs Map("#email" -> "email")
+    parsedExpr.expressionValues should contain theSameElementsAs
+      Map(":email" -> "me_myself_i@domain.com")
+  }
+
   it should "correctly parse compare long expressions" in {
     val parsedExpr = ParsedFilterExpression("value = 1")
     parsedExpr.expression should be ("#value = :value")
