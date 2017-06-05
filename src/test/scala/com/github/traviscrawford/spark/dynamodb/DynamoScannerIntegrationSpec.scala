@@ -10,9 +10,9 @@ class DynamoScannerIntegrationSpec extends BaseIntegrationSpec {
       maybeEndpoint = Some(LocalDynamoDBEndpoint))
 
     val expected = Array(
-      "{\"user_id\":1,\"username\":\"a\"}",
-      "{\"user_id\":2,\"username\":\"b\"}",
-      "{\"user_id\":3,\"username\":\"c\"}")
+      "{\"__createdAt\":11,\"user_id\":1,\"username\":\"a\"}",
+      "{\"__createdAt\":22,\"user_id\":2,\"username\":\"b\"}",
+      "{\"__createdAt\":33,\"user_id\":3,\"username\":\"c\"}")
 
     items.collect() should contain theSameElementsAs expected
   }
