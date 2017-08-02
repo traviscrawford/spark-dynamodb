@@ -3,39 +3,47 @@ package com.github.traviscrawford.spark.dynamodb
 import com.amazonaws.services.dynamodbv2.document.Item
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
 
+import scala.collection.JavaConverters.asScalaBufferConverter
+
+/** Simple DynamoDB [[Item]] to Spark [[Row]] converter.
+  *
+  * This converter handles common string and numeric conversions, and simple arrays.
+  * As DynamoDB stores everything internally as [[BigDecimal]], we cast into the data
+  * type defined in the given schema.
+  */
 private[dynamodb] object ItemConverter {
-  private implicit val Formats = DefaultFormats
 
-  /** Item to Row converter.
-    *
-    * Note this is a simple converter for use in tests while determining the overall structure,
-    * and does not focus on efficiency or handling all data types at this time.
-    */
   def toRow(item: Item, schema: StructType): Row = {
-    val json = parse(item.toJSON)
-
     val values: Seq[Any] = schema.map(field => {
-      val jsonFieldValue = json \ field.name
-
-      jsonFieldValue match {
-        case JNothing =>
-          // item does not have a value for this field
-          // scalastyle:off null
-          null
-          // scalastyle:on null
-        case _ =>
-          field.dataType match {
-            case IntegerType => jsonFieldValue.extract[Int]
-            case LongType => jsonFieldValue.extract[Long]
-            case DoubleType => jsonFieldValue.extract[Double]
-            case StringType => jsonFieldValue.extract[String]
-          }
+      field.dataType.typeName match {
+        case "string" => item.getString(field.name)
+        case "integer" => item.getInt(field.name)
+        case "long" => item.getLong(field.name)
+        case "float" => item.getFloat(field.name)
+        case "double" => item.getDouble(field.name)
+        case "array" => getArrayValue(field, item)
+        case _ => throw new IllegalArgumentException(
+          s"Unexpected data type ${field.dataType.typeName} field: $field item: $item")
       }
     })
 
     Row.fromSeq(values)
+  }
+
+  private def getArrayValue(field: StructField, item: Item): Any = {
+    def getList(fieldName: String): List[java.math.BigDecimal] = {
+      item.getList[java.math.BigDecimal](field.name).asScala.toList
+    }
+
+    field.dataType.asInstanceOf[ArrayType].elementType match {
+      case StringType => item.getList[String](field.name).asScala.toList
+      case IntegerType => getList(field.name).map(_.intValue())
+      case LongType => getList(field.name).map(_.longValue())
+      case FloatType => getList(field.name).map(_.floatValue())
+      case DoubleType => getList(field.name).map(_.doubleValue())
+      case _ => throw new IllegalArgumentException(
+        s"Unexpected array element type ${field.dataType.typeName} field: $field item: $item")
+    }
   }
 }
