@@ -22,6 +22,7 @@ private[dynamodb] object ItemConverter {
         case "long" => item.getLong(field.name)
         case "float" => item.getFloat(field.name)
         case "double" => item.getDouble(field.name)
+        case "boolean" => item.getBoolean(field.name)
         case "array" => getArrayValue(field, item)
         case _ => throw new IllegalArgumentException(
           s"Unexpected data type ${field.dataType.typeName} field: $field item: $item")
@@ -42,6 +43,7 @@ private[dynamodb] object ItemConverter {
       case LongType => getList(field.name).map(_.longValue())
       case FloatType => getList(field.name).map(_.floatValue())
       case DoubleType => getList(field.name).map(_.doubleValue())
+      case BooleanType => item.getList[Boolean](field.name).asScala.toList
       case _ => throw new IllegalArgumentException(
         s"Unexpected array element type ${field.dataType.typeName} field: $field item: $item")
     }
