@@ -3,7 +3,7 @@
 
   <groupId>com.github.traviscrawford</groupId>
   <artifactId>spark-dynamodb</artifactId>
-  <version>0.0.13</version>
+  <version>0.0.14-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>spark-dynamodb</name>
@@ -34,7 +34,7 @@
     <connection>scm:git:https://github.com/traviscrawford/spark-dynamodb.git</connection>
     <developerConnection>scm:git:git@github.com:traviscrawford/spark-dynamodb.git</developerConnection>
     <url>https://github.com/traviscrawford/spark-dynamodb</url>
-    <tag>spark-dynamodb-0.0.13</tag>
+    <tag>spark-dynamodb-0.0.2</tag>
   </scm>
 
   <distributionManagement>
