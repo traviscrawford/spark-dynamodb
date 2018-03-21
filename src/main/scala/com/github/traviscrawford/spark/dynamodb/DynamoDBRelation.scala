@@ -58,8 +58,9 @@ private[dynamodb] case class DynamoDBRelation(
     val scanSpec = new ScanSpec().withMaxPageSize(pageSize)
     val result = Table.scan(scanSpec)
     val json = result.firstPage().iterator().map(_.toJSON)
-    val jsonRDD = sqlContext.sparkContext.parallelize(json.toSeq)
-    val jsonDF = sqlContext.read.json(jsonRDD)
+    import sqlContext.implicits._
+    val jsonDS = sqlContext.sparkContext.parallelize(json.toSeq).toDS()
+    val jsonDF = sqlContext.read.json(jsonDS)
     jsonDF.schema
   })
 

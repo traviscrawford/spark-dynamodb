@@ -1,9 +1,8 @@
 package com.github.traviscrawford.spark.dynamodb
 
 import com.amazonaws.auth.AWSCredentialsProvider
-import com.amazonaws.regions.Region
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.Table
 import com.amazonaws.services.dynamodbv2.document.spec.ScanSpec
@@ -25,18 +24,24 @@ private[dynamodb] trait BaseScanner {
     maybeEndpoint: Option[String])
   : Table = {
 
-    val amazonDynamoDBClient = maybeCredentials match {
+    val builder = AmazonDynamoDBClientBuilder.standard()
+
+    maybeCredentials match {
       case Some(credentialsClassName) =>
         log.info(s"Using AWSCredentialsProvider $credentialsClassName")
         val credentials = Class.forName(credentialsClassName)
           .newInstance().asInstanceOf[AWSCredentialsProvider]
-        new AmazonDynamoDBClient(credentials)
-      case None => new AmazonDynamoDBClient()
+        builder.withCredentials(credentials)
+      case None => // pass
     }
 
-    maybeRegion.foreach(r => amazonDynamoDBClient.setRegion(Region.getRegion(Regions.fromName(r))))
-    maybeEndpoint.foreach(amazonDynamoDBClient.setEndpoint) // for tests
-    new DynamoDB(amazonDynamoDBClient).getTable(tableName)
+    maybeRegion.foreach(builder.withRegion)
+    maybeEndpoint.foreach(endpoint => {
+      val endpointConfiguration = new EndpointConfiguration(endpoint, "us-west-2")
+      builder.withEndpointConfiguration(endpointConfiguration) // for tests
+    })
+    val client = builder.build()
+    new DynamoDB(client).getTable(tableName)
   }
 
   def getTable(config: ScanConfig): Table = {

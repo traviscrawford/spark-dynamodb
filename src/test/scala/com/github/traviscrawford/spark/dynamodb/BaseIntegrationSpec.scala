@@ -1,6 +1,7 @@
 package com.github.traviscrawford.spark.dynamodb
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
 import com.amazonaws.services.dynamodbv2.document.Item
 import com.amazonaws.services.dynamodbv2.model._
@@ -35,8 +36,9 @@ trait BaseIntegrationSpec extends FlatSpec with Matchers {
   }
 
   private def initializeTestUsersTable(): Unit = {
-    val amazonDynamoDBClient = new AmazonDynamoDBClient()
-    amazonDynamoDBClient.setEndpoint(LocalDynamoDBEndpoint)
+    val amazonDynamoDBClient = AmazonDynamoDBClientBuilder.standard()
+      .withEndpointConfiguration(new EndpointConfiguration(LocalDynamoDBEndpoint, "us-west-2"))
+      .build()
 
     val dynamodb = new DynamoDB(amazonDynamoDBClient)
 
