@@ -23,6 +23,8 @@ object DynamoScanner extends BaseScanner {
     totalSegments: Int,
     pageSize: Int,
     maybeCredentials: Option[String] = None,
+    awsAccessKey: Option[String] = None,
+    awsSecretKey: Option[String] = None,
     maybeRateLimit: Option[Int] = None,
     maybeRegion: Option[String] = None,
     maybeEndpoint: Option[String] = None)
@@ -37,6 +39,8 @@ object DynamoScanner extends BaseScanner {
         pageSize = pageSize,
         maybeRateLimit = maybeRateLimit,
         maybeCredentials = maybeCredentials,
+        awsAccessKey = awsAccessKey,
+        awsSecretKey = awsSecretKey,
         maybeRegion = maybeRegion,
         maybeEndpoint = maybeEndpoint)
     })

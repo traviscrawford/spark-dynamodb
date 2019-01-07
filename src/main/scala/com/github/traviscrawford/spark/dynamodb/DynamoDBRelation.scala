@@ -39,6 +39,8 @@ private[dynamodb] case class DynamoDBRelation(
   maybeRegion: Option[String],
   maybeSchema: Option[StructType],
   maybeCredentials: Option[String] = None,
+  awsAccessKey: Option[String] = None,
+  awsSecretKey: Option[String] = None,
   maybeEndpoint: Option[String])
   (@transient val sqlContext: SQLContext)
   extends BaseRelation with PrunedScan with BaseScanner {
@@ -46,7 +48,7 @@ private[dynamodb] case class DynamoDBRelation(
   private val log = LoggerFactory.getLogger(this.getClass)
 
   @transient private lazy val Table = getTable(
-    tableName, maybeCredentials, maybeRegion, maybeEndpoint)
+    tableName, maybeCredentials, awsAccessKey, awsSecretKey, maybeRegion, maybeEndpoint)
 
   private val pageSize = Integer.parseInt(maybePageSize.getOrElse("1000"))
 
@@ -84,6 +86,8 @@ private[dynamodb] case class DynamoDBRelation(
         maybeFilterExpression = maybeFilterExpression,
         maybeRateLimit = maybeRateLimit,
         maybeCredentials = maybeCredentials,
+        awsAccessKey = awsAccessKey,
+        awsSecretKey = awsSecretKey,
         maybeRegion = maybeRegion,
         maybeEndpoint = maybeEndpoint)
     })
