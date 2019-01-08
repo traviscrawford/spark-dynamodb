@@ -32,11 +32,12 @@ object DynamoBackupJob extends Job {
     val maybeCredentials = if (credentials.isDefined) Some(credentials()) else None
     val maybeRateLimit = if (rateLimit.isDefined) Some(rateLimit()) else None
     val maybeRegion = if (region.isDefined) Some(region()) else None
-
+    val awsAccessKey = None
+    val awsSecretKey = None
     if (overwrite()) deleteOutputPath(output())
 
     DynamoScanner(sc, table(), totalSegments(), pageSize(),
-      maybeCredentials, maybeRateLimit, maybeRegion).saveAsTextFile(output())
+      maybeCredentials, awsAccessKey, awsSecretKey, maybeRateLimit, maybeRegion).saveAsTextFile(output())
   }
 
   private def deleteOutputPath(output: String): Unit = {

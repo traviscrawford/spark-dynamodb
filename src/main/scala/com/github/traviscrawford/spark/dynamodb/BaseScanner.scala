@@ -1,6 +1,9 @@
 package com.github.traviscrawford.spark.dynamodb
 
+import com.amazonaws.auth.AWSCredentials
 import com.amazonaws.auth.AWSCredentialsProvider
+import com.amazonaws.auth.AWSStaticCredentialsProvider
+import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder
 import com.amazonaws.services.dynamodbv2.document.DynamoDB
@@ -20,6 +23,8 @@ private[dynamodb] trait BaseScanner {
   def getTable(
     tableName: String,
     maybeCredentials: Option[String],
+    awsAccessKey: Option[String],
+    awsSecretKey: Option[String],
     maybeRegion: Option[String],
     maybeEndpoint: Option[String])
   : Table = {
@@ -29,9 +34,15 @@ private[dynamodb] trait BaseScanner {
     maybeCredentials match {
       case Some(credentialsClassName) =>
         log.info(s"Using AWSCredentialsProvider $credentialsClassName")
-        val credentials = Class.forName(credentialsClassName)
-          .newInstance().asInstanceOf[AWSCredentialsProvider]
-        builder.withCredentials(credentials)
+        if (credentialsClassName == "AWSStaticCredentialsProvider") {
+            val creds = new BasicAWSCredentials(awsAccessKey.get, awsSecretKey.get)
+            val ascp = new AWSStaticCredentialsProvider(creds)
+            builder.withCredentials(ascp)
+        } else {
+            val credentials = Class.forName(credentialsClassName)
+                .newInstance().asInstanceOf[AWSCredentialsProvider]
+            builder.withCredentials(credentials)
+        }
       case None => // pass
     }
 
@@ -48,6 +59,8 @@ private[dynamodb] trait BaseScanner {
     getTable(
       tableName = config.table,
       config.maybeCredentials,
+      config.awsAccessKey,
+      config.awsSecretKey,
       config.maybeRegion,
       config.maybeEndpoint)
   }
@@ -98,6 +111,8 @@ private[dynamodb] case class ScanConfig(
   maybeFilterExpression: Option[String] = None,
   maybeRateLimit: Option[Int] = None,
   maybeCredentials: Option[String] = None,
+  awsAccessKey: Option[String] = None,
+  awsSecretKey: Option[String] = None,
   maybeRegion: Option[String] = None,
   maybeEndpoint: Option[String] = None
 )
