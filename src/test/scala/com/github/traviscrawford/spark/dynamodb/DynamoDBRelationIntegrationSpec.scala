@@ -8,6 +8,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
   private val EndpointKey = "endpoint"
   private val TestUsersTableSchema = StructType(Seq(
     StructField(CreatedAtKey, LongType),
+    StructField(IsAdmin, BooleanType),
     StructField(UserIdKey, LongType),
     StructField(UsernameKey, StringType)))
 
@@ -26,7 +27,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
       .dynamodb(TestUsersTableName)
 
     usersDF.collect() should contain theSameElementsAs
-      Seq(Row(11, 1, "a"), Row(22, 2, "b"), Row(33, 3, "c"))
+      Seq(Row(11, true, 1, "a"), Row(22, false, 2, "b"), Row(33, false, 3, "c"))
   }
 
   it should "get attributes in the user-provided schema" in {
@@ -36,7 +37,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
       .dynamodb(TestUsersTableName)
 
     usersDF.collect() should contain theSameElementsAs
-      Seq(Row(11, 1, "a"), Row(22, 2, "b"), Row(33, 3, "c"))
+      Seq(Row(11, true, 1, "a"), Row(22, false, 2, "b"), Row(33, false, 3, "c"))
   }
 
   it should "support EqualTo filters" in {
@@ -48,7 +49,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users where username = 'a'").collect() should
-      contain theSameElementsAs Seq(Row(11, 1, "a"))
+      contain theSameElementsAs Seq(Row(11, true, 1, "a"))
   }
 
   it should "support GreaterThan filters" in {
@@ -60,7 +61,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users where username > 'b'").collect() should
-      contain theSameElementsAs Seq(Row(33, 3, "c"))
+      contain theSameElementsAs Seq(Row(33, false, 3, "c"))
   }
 
   it should "support LessThan filters" in {
@@ -72,7 +73,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users where username < 'b'").collect() should
-      contain theSameElementsAs Seq(Row(11, 1, "a"))
+      contain theSameElementsAs Seq(Row(11, true, 1, "a"))
   }
 
   it should "apply server side filter_expressions" in {
@@ -85,7 +86,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users where username <> 'c'").collect() should
-      contain theSameElementsAs Seq(Row(11, 1, "a"))
+      contain theSameElementsAs Seq(Row(11, true, 1, "a"))
   }
 
   it should "apply server side filter_expressions equals" in {
@@ -98,6 +99,6 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users").collect() should
-      contain theSameElementsAs Seq(Row(11, 1, "a"))
+      contain theSameElementsAs Seq(Row(11, true, 1, "a"))
   }
 }

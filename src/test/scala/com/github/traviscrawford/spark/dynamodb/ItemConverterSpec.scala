@@ -21,6 +21,8 @@ class ItemConverterSpec extends FlatSpec with Matchers {
       .withList("testFloatList", Seq(3.3f).asJava)
       .withDouble("testDouble", 4.4d)
       .withList("testDoubleList", Seq(4.4d).asJava)
+      .withBoolean("testBoolean", true)
+      .withList("testDoubleListList", Seq(true, false, true).asJava)
 
     val schema = StructType(Seq(
       StructField("testString", StringType),
@@ -32,10 +34,12 @@ class ItemConverterSpec extends FlatSpec with Matchers {
       StructField("testFloat", FloatType),
       StructField("testFloatList", ArrayType(FloatType)),
       StructField("testDouble", DoubleType),
-      StructField("testDoubleList", ArrayType(DoubleType))
+      StructField("testDoubleList", ArrayType(DoubleType)),
+      StructField("testBoolean", BooleanType),
+      StructField("testDoubleListList", ArrayType(BooleanType))
     ))
 
     ItemConverter.toRow(item, schema) shouldBe
-      Row("a", Seq("a"), 1, Seq(1), 2L, Seq(2L), 3.3f, Seq(3.3f), 4.4d, Seq(4.4d))
+      Row("a", Seq("a"), 1, Seq(1), 2L, Seq(2L), 3.3f, Seq(3.3f), 4.4d, Seq(4.4d), true, Seq(true, false, true))
   }
 }

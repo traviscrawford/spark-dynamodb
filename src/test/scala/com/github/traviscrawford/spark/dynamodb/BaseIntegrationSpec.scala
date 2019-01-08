@@ -29,6 +29,7 @@ trait BaseIntegrationSpec extends FlatSpec with Matchers {
   protected val UserIdKey = "user_id"
   protected val UsernameKey = "username"
   protected val CreatedAtKey = "__createdAt"
+  protected val IsAdmin = "is_admin"
 
   override def withFixture(test: NoArgTest): Outcome = {
     initializeTestUsersTable()
@@ -59,9 +60,24 @@ trait BaseIntegrationSpec extends FlatSpec with Matchers {
     assert(table.getTableName == TestUsersTableName)
 
     val items = Seq(
-      new Item().withNumber(UserIdKey, 1).withString(UsernameKey, "a").withNumber(CreatedAtKey, 11),
-      new Item().withNumber(UserIdKey, 2).withString(UsernameKey, "b").withNumber(CreatedAtKey, 22),
-      new Item().withNumber(UserIdKey, 3).withString(UsernameKey, "c").withNumber(CreatedAtKey, 33))
+      new Item()
+        .withNumber(UserIdKey, 1)
+        .withString(UsernameKey, "a")
+        .withNumber(CreatedAtKey, 11)
+        .withBoolean(IsAdmin, true),
+
+      new Item()
+        .withNumber(UserIdKey, 2)
+        .withString(UsernameKey, "b")
+        .withNumber(CreatedAtKey, 22)
+        .withBoolean(IsAdmin, false),
+
+      new Item()
+        .withNumber(UserIdKey, 3)
+        .withString(UsernameKey, "c")
+        .withNumber(CreatedAtKey, 33)
+        .withBoolean(IsAdmin, false)
+    )
 
     items.foreach(table.putItem)
   }
