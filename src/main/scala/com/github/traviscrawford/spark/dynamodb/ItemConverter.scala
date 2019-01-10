@@ -16,15 +16,21 @@ private[dynamodb] object ItemConverter {
 
   def toRow(item: Item, schema: StructType): Row = {
     val values: Seq[Any] = schema.map(field => {
-      field.dataType.typeName match {
-        case "string" => item.getString(field.name)
-        case "integer" => item.getInt(field.name)
-        case "long" => item.getLong(field.name)
-        case "float" => item.getFloat(field.name)
-        case "double" => item.getDouble(field.name)
-        case "array" => getArrayValue(field, item)
-        case _ => throw new IllegalArgumentException(
-          s"Unexpected data type ${field.dataType.typeName} field: $field item: $item")
+      if (item.hasAttribute(field.name)) {
+        field.dataType.typeName match {
+          case "string" => item.getString(field.name)
+          case "integer" => item.getInt(field.name)
+          case "long" => item.getLong(field.name)
+          case "float" => item.getFloat(field.name)
+          case "double" => item.getDouble(field.name)
+          case "array" => getArrayValue(field, item)
+          case _ => throw new IllegalArgumentException(
+            s"Unexpected data type ${field.dataType.typeName} field: $field item: $item")
+        }
+      } else {
+        // scalastyle:off null
+        null
+        // scalastyle:on null
       }
     })
 
