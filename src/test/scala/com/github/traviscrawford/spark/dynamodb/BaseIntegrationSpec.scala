@@ -61,8 +61,8 @@ trait BaseIntegrationSpec extends FlatSpec with Matchers {
     val items = Seq(
       new Item().withNumber(UserIdKey, 1).withString(UsernameKey, "a").withNumber(CreatedAtKey, 11),
       new Item().withNumber(UserIdKey, 2).withString(UsernameKey, "b").withNumber(CreatedAtKey, 22),
-      new Item().withNumber(UserIdKey, 3).withString(UsernameKey, "c").withNumber(CreatedAtKey, 33))
-
+      new Item().withNumber(UserIdKey, 3).withString(UsernameKey, "c").withNumber(CreatedAtKey, 33),
+      new Item().withNumber(UserIdKey, 4).withString(UsernameKey, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e").withNumber(CreatedAtKey, 44))
     items.foreach(table.putItem)
   }
 }

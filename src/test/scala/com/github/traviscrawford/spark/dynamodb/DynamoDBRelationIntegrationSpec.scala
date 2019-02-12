@@ -26,7 +26,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
       .dynamodb(TestUsersTableName)
 
     usersDF.collect() should contain theSameElementsAs
-      Seq(Row(11, 1, "a"), Row(22, 2, "b"), Row(33, 3, "c"))
+      Seq(Row(11, 1, "a"), Row(22, 2, "b"), Row(33, 3, "c"), Row(44, 4, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e"))
   }
 
   it should "get attributes in the user-provided schema" in {
@@ -36,7 +36,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
       .dynamodb(TestUsersTableName)
 
     usersDF.collect() should contain theSameElementsAs
-      Seq(Row(11, 1, "a"), Row(22, 2, "b"), Row(33, 3, "c"))
+      Seq(Row(11, 1, "a"), Row(22, 2, "b"), Row(33, 3, "c"), Row(44, 4, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e"))
   }
 
   it should "support EqualTo filters" in {
@@ -60,7 +60,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users where username > 'b'").collect() should
-      contain theSameElementsAs Seq(Row(33, 3, "c"))
+      contain theSameElementsAs Seq(Row(33, 3, "c"), Row(44, 4, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e"))
   }
 
   it should "support LessThan filters" in {
@@ -85,7 +85,7 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
     df.createOrReplaceTempView("users")
 
     spark.sql("select * from users where username <> 'c'").collect() should
-      contain theSameElementsAs Seq(Row(11, 1, "a"))
+      contain theSameElementsAs Seq(Row(11, 1, "a"), Row(44, 4, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e"))
   }
 
   it should "apply server side filter_expressions equals" in {
@@ -99,5 +99,35 @@ class DynamoDBRelationIntegrationSpec() extends BaseIntegrationSpec {
 
     spark.sql("select * from users").collect() should
       contain theSameElementsAs Seq(Row(11, 1, "a"))
+  }
+
+  it should "apply server side filter_expressions equals for strings with colons" in {
+    val df = spark.read
+      .schema(TestUsersTableSchema)
+      .option(EndpointKey, LocalDynamoDBEndpoint)
+      .option("filter_expression", "username = modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e")
+      .dynamodb(TestUsersTableName)
+
+    df.explain()
+
+    df.createOrReplaceTempView("users")
+
+    spark.sql("select * from users").collect() should
+      contain theSameElementsAs Seq(Row(44, 4, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e"))
+  }
+
+  it should "apply server side filter_expressions begins with for strings with colons" in {
+    val df = spark.read
+      .schema(TestUsersTableSchema)
+      .option(EndpointKey, LocalDynamoDBEndpoint)
+      .option("filter_expression", "begins_with(username, modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e)")
+      .dynamodb(TestUsersTableName)
+
+    df.explain()
+
+    df.createOrReplaceTempView("users")
+
+    spark.sql("select * from users").collect() should
+      contain theSameElementsAs Seq(Row(44, 4, "modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e"))
   }
 }

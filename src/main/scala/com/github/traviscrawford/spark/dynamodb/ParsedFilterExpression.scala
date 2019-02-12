@@ -13,6 +13,8 @@ private object ParsedFilterExpression {
   private val CompareLongExpr = """(\w+) (=|>|<|>=|<=|<>) (\d+)""".r
   private val CompareStringExpr = """(\w+) (=|>|<|>=|<=|<>) (\D+)""".r
   private val BeginsWithExpr = """begins_with\((\w+), (\D+)\)""".r
+  private val CompareStringExprWithColonInValue = """(\w+) (=|>|<|>=|<=|<>) (.*:.*)""".r
+  private val BeginsWithCompareStringExprWithColonInValue = """begins_with\((\w+), (.*:.*)\)""".r
 
   def apply(filterExpression: String): ParsedFilterExpression = {
     filterExpression match {
@@ -25,6 +27,14 @@ private object ParsedFilterExpression {
           Map(s"#$fieldName" -> s"$fieldName"),
           Map(s":$fieldName" -> s"$fieldValue"))
       case BeginsWithExpr(fieldName, fieldValue) =>
+        ParsedFilterExpression(s"begins_with(#$fieldName, :$fieldName)",
+          Map(s"#$fieldName" -> s"$fieldName"),
+          Map(s":$fieldName" -> s"$fieldValue"))
+      case CompareStringExprWithColonInValue(fieldName, operator, fieldValue) =>
+        ParsedFilterExpression(s"#$fieldName $operator :$fieldName",
+          Map(s"#$fieldName" -> s"$fieldName"),
+          Map(s":$fieldName" -> s"$fieldValue"))
+      case BeginsWithCompareStringExprWithColonInValue(fieldName, fieldValue) =>
         ParsedFilterExpression(s"begins_with(#$fieldName, :$fieldName)",
           Map(s"#$fieldName" -> s"$fieldName"),
           Map(s":$fieldName" -> s"$fieldValue"))

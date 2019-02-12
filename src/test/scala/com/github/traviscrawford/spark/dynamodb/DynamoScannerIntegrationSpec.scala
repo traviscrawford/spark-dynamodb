@@ -12,7 +12,8 @@ class DynamoScannerIntegrationSpec extends BaseIntegrationSpec {
     val expected = Array(
       "{\"__createdAt\":11,\"user_id\":1,\"username\":\"a\"}",
       "{\"__createdAt\":22,\"user_id\":2,\"username\":\"b\"}",
-      "{\"__createdAt\":33,\"user_id\":3,\"username\":\"c\"}")
+      "{\"__createdAt\":33,\"user_id\":3,\"username\":\"c\"}",
+      "{\"__createdAt\":44,\"user_id\":4,\"username\":\"modifier:f058b7e1-689f-42af-a9a9-94c5cecc035e\"}")
 
     items.collect() should contain theSameElementsAs expected
   }
