@@ -61,7 +61,7 @@
             </goals>
             <configuration>
               <shadedArtifactAttached>true</shadedArtifactAttached>
-              <shadedClassifierName>allinone</shadedClassifierName>
+              <shadedClassifierName>shaded-guava</shadedClassifierName>
               <artifactSet>
                 <includes>
                   <include>*:spark-dynamodb</include>
