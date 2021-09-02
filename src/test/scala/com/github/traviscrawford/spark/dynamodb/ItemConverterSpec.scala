@@ -1,5 +1,6 @@
 package com.github.traviscrawford.spark.dynamodb
 
+import com.amazonaws.services.dynamodbv2.document.IncompatibleTypeException
 import com.amazonaws.services.dynamodbv2.document.Item
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
@@ -21,6 +22,8 @@ class ItemConverterSpec extends FlatSpec with Matchers {
       .withList("testFloatList", Seq(3.3f).asJava)
       .withDouble("testDouble", 4.4d)
       .withList("testDoubleList", Seq(4.4d).asJava)
+      .withBoolean("testBoolean", true)
+      .withList("testBooleanList", Seq(true, false).asJava)
 
     val schema = StructType(Seq(
       StructField("testString", StringType),
@@ -32,11 +35,14 @@ class ItemConverterSpec extends FlatSpec with Matchers {
       StructField("testFloat", FloatType),
       StructField("testFloatList", ArrayType(FloatType)),
       StructField("testDouble", DoubleType),
-      StructField("testDoubleList", ArrayType(DoubleType))
+      StructField("testDoubleList", ArrayType(DoubleType)),
+      StructField("testBoolean", BooleanType),
+      StructField("testBooleanList", ArrayType(BooleanType))
     ))
 
     ItemConverter.toRow(item, schema) shouldBe
-      Row("a", Seq("a"), 1, Seq(1), 2L, Seq(2L), 3.3f, Seq(3.3f), 4.4d, Seq(4.4d))
+      Row("a", Seq("a"), 1, Seq(1), 2L, Seq(2L), 3.3f, Seq(3.3f), 4.4d, Seq(4.4d),
+        true, Seq(true, false))
   }
 
   it should "correctly transform an Item into a Row if item is missing a field" in {
@@ -68,5 +74,18 @@ class ItemConverterSpec extends FlatSpec with Matchers {
     ItemConverter.toRow(item, schema) shouldBe
       Row(null, Seq("a"), 1, Seq(1), 2L, Seq(2L), 3.3f, Seq(3.3f), 4.4d, Seq(4.4d))
     // scalastyle:on null
+  }
+
+  it should "throw an exception when boolean records have the wrong value type" in {
+    val item = new Item()
+      .withInt("testBoolean", 1)
+
+    val schema = StructType(Seq(
+      StructField("testBoolean", BooleanType)
+    ))
+
+    assertThrows[IncompatibleTypeException] {
+      ItemConverter.toRow(item, schema)
+    }
   }
 }
